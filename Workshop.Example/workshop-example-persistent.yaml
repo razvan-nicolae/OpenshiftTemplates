@@ -301,7 +301,7 @@
       displayName: "Database Service Name"
       description: "The name assigned to all of the DB objects defined in this template."
       required: true
-      value: "workshop-persistent-mysql"
+      value: "workshop-persistent-db"
     - name: "DATABASE_NAME"
       displayName: "Database Name"
       value: "mysqldb"
