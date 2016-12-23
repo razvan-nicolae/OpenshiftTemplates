@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en" ng-app="todomvc" data-framework="angularjs">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<title>Kermit Workshop • TodoMVC</title>
+		<link rel="stylesheet" href="hopscotch/css/hopscotch-0.1.2.css">
+		<link rel="stylesheet" href="bower_components/todomvc-common/base.css">
+		<style>
+			[ng-cloak] { 
+				display: none; 
+			}
+			.hopscotch-bubble-container{
+				display: table-cell;
+			}
+			.cmd {
+				white-space: nowrap;
+			}
+			.linefeed {
+				white-space:nowrap;
+			}
+		</style>
+	</head>
+	<body>
+		<section>
+			<section id="todoapp" ng-controller="TodoCtrl">
+				<span class="error" ng-show="error != undefined" ng-cloak>
+					<strong>Error : </strong>{{error}}
+				</span>
+				<header id="header">
+					<h1>ToDo List</h1>
+					<form id="todo-form" ng-submit="addTodo()">
+						<input id="new-todo" placeholder="What needs to be done?" ng-model="newTodo" autofocus>
+					</form>
+				</header>
+				<section id="main" ng-show="todos.length" ng-cloak>
+					<input id="toggle-all" type="checkbox" ng-model="allChecked" ng-click="markAll(allChecked)">
+					<label for="toggle-all">Mark all as complete</label>
+					<ul id="todo-list">
+						<li ng-repeat="todo in todos | filter:statusFilter" ng-class="{completed: todo.completed, editing: todo == editedTodo}">
+							<div class="view">
+								<input class="toggle" type="checkbox" ng-model="todo.completed">
+								<label ng-dblclick="editTodo(todo)">{{todo.title}}</label>
+								<button class="destroy" ng-click="removeTodo(todo)"></button>
+							</div>
+							<form ng-submit="doneEditing(todo)">
+								<input class="edit" ng-model="todo.title" todo-escape="revertEditing(todo)" todo-blur="doneEditing(todo)" todo-focus="todo == editedTodo">
+							</form>
+						</li>
+					</ul>
+				</section>
+				<footer id="footer" ng-show="todos.length" ng-cloak>
+					<span id="todo-count"><strong>{{remainingCount}}</strong>
+						<ng-pluralize count="remainingCount" when="{ one: 'item left', other: 'items left' }"></ng-pluralize>
+					</span>
+					<ul id="filters">
+						<li>
+							<a ng-class="{selected: location.path() == '/'} " href="#/">All</a>
+						</li>
+						<li>
+							<a ng-class="{selected: location.path() == '/active'}" href="#/active">Active</a>
+						</li>
+						<li>
+							<a ng-class="{selected: location.path() == '/completed'}" href="#/completed">Completed</a>
+						</li>
+					</ul>
+					<button id="clear-completed" ng-click="clearCompletedTodos()" ng-show="completedCount">Clear completed ({{completedCount}})</button>
+				</footer>
+			</section>
+		</section>
+		<footer id="info">
+			<section ng-controller="TourCtrl">
+				<section id="tour" ng-cloak>
+					<button ng-click="startTour('normal', 10)" class="tuto-launcher">Start workshop</button>
+					<!-- <button ng-click="startTour('bonus', 7)" class="tuto-launcher bonus-button" ng-show="isBonusVisible">Bonus</button> -->
+				</section>
+				
+				<section id="ariane" ng-cloak>
+					<ul>
+						<li ng-repeat="stepNumber in stepNumbers()">
+							<span ng-class="stepClass(stepNumber)" ng-click="setStep($index)">{{stepNumber}}</span>
+						</li>
+					</ul>
+				</section>
+				
+				<section data-tour="normal" style="display:none">
+					<div data-tour-step="1" title="Getting Started">
+						<p>If you didn't do it yet, take time to use the todo list on your left.</p>
+						<p>Add, delete, close, or update tasks.</p>
+						<p>Once you understood the todo list behaviors, go to next step.</p>
+					</div>
+                    <div data-tour-step="2" title="Check your application builds">
+                        <p>Go to the Web Console and select Browse/Builds</p>
+                        <p>Here you can find additional information about the build configuration and the triggers.</p>
+						<p>Also you can check the logs for details.</p>
+                        <p>Or you can rebuild (restart the building process). </p>
+                    </div>
+                    <div data-tour-step="3" title="Check your application deployments">
+                        <p>Go to the Web Console and select Browse/Deployments</p>
+                        <p>Here you can find additional information about the deploy configuration and the triggers.</p>
+						<p>Also you can check the logs for details.</p>
+                        <p>Or you can redeploy (restart the deploy process). </p>
+                    </div>
+                    <div data-tour-step="4" title="Check Events">
+                        <p>Go to the Web Console and select Browse/Events:</p>
+						<p>Here you can find the history of your application lifecycle.</p>
+                    </div>
+                    <div data-tour-step="5" title="Check Image Streams">
+                        <p>Go to the Web Console and select Browse/Image Streams:</p>
+						<p>Here you can find some informations about the docker images used.</p>
+                    </div>
+                    <div data-tour-step="6" title="Check Pods">
+                        <p>Go to the Web Console and select Browse/Pods:</p>
+						<p>Here you can find the list of pods used in building and deploying your application.</p>
+                    </div>
+                    <div data-tour-step="7" title="Check Routes">
+                        <p>Go to the Web Console and select Browse/Routes:</p>
+						<p>Here you can find the route that exposes a service by giving it an externally-reachable hostname.</p>
+                    </div>
+                    <div data-tour-step="8" title="Check Services">
+                        <p>Go to the Web Console and select Browse/Services:</p>
+						<p>Here you can find details about the services.</p>
+                    </div>
+                    <div data-tour-step="9" title="Check Storage">
+                        <p>Go to the Web Console and select Browse/Storage:</p>
+						<p>Here you can check the persistent volume claims.</p>
+                    </div>
+					<div data-tour-step="10" title="Thanks">
+						 <p>If you want to learn more, go on to the <a href="http://kermit-docker.rd.francetelecom.fr/knowledge-base/1-hour-tutorial-2/"> 1 hour tutorial</a></p>
+					</div>
+				</section>
+				<section  data-tour="bonus" style="display:none">
+					<div data-tour-step="1" title="Curieux d'aller voir où tourne l'application ?">
+						Il est possible de se connecter en SSH à l'environnement d'exécution de son application.<br/>
+						<br/>
+						<code class="cmd">rhc ssh {{appName}}</code><br/>
+						<br/>
+						Vous avez accès à un shell restreint qui vous permet, par exemple, de visualiser les variables d'environnement disponibles
+						<br/><br/>
+						<code class="cmd">env</code><br/>
+						<br/>
+						N'hésitez pas à tester d'autres commandes et à vous ballader dans l'arborescence<br/>
+						<br/>
+						Utilisez <code>exit</code> pour quitter votre session <b>ssh</b>
+					</div>
+					<div data-tour-step="2" title="Take the power">
+						Actuellement, le code applicatif s'assure que les tables Mysql dont on a besoin sont présentes (et les créées au premier lancement avec une base vide)
+						<br/><br/>
+						Pour éviter d'avoir à prendre cette problématique en charge au sein du code Java, il est possible d'utiliser les <b>Action Hooks</b>.
+						<br/><br/>
+						Ces hooks permettent d'éxecuter des scripts durant certaines phases (build, deploy,...) directement sur les machines sur lequelles les applications sont hebergées.<br/>
+						<br/><br/>
+						Nous allons utiliser ce mécanisme pour initialiser les données de votre base si elle est vide.
+						<br/><br/>
+						Passons à l'action.
+					</div>
+					<div data-tour-step="3" title="Take the power (suite)">
+						Commençons par supprimer les données existantes.
+						<br/><br/>
+						Pour cela, se connecter en ssh sur votre application:
+						<br/><br/>
+						<code class="cmd">rhc ssh {{appName}}</code>
+						<br/><br/>
+						Puis, se connecter à votre base mysql:
+						<br/><br/>
+						<code class="cmd">mysql {{appName}}</code>
+						<br/><br/>
+						Supprimer les lignes présentes dans la table <b>todos</b>
+						<br/><br/>
+						<code class="cmd">delete from todos;</code>
+						<br/><br/>
+						Utiliser <code>quit</code> pour quitter la session <b>mysql</b><br/>
+						Utiliser <code>exit</code> pour quitter la session <b>ssh</b><br/>
+						<br>
+					</div>
+					
+					<div data-tour-step="4" title="Take the power (suite)">
+						A la racine du projet, regardez par exemple le fichier <b>.openshift/action_hooks/pre_start_jbossews-2.0</b> 
+						qui comme son nom l'indique est exécuté <b>avant chaque démarrage de jbossews</b>.
+						<br/><br/>
+						Dans ce fichier, une ligne est commentée qui execute un script mysql sur l'instance MySQL associée à notre application (la cartridge MySQL)<br/>
+						<br/>
+						<small>
+						Remarque : au sein des action_hooks comme lorsque vous faites du SSH sur votre application, vous avez accès aux variables d'environnement injectées par les cartridges (ici les "login:password@host:port/database")
+						</small>
+						<br/><br/>
+						Le script fait référence à un script sql contenu dans <b>src/main/openshift/init.sql</b>
+						<br/><br/>
+						Décommentez les lignes commentées, poussez le code sur votre application (git add...commit...push..etc.)
+						<br/><br/>Observez les logs du git push
+					</div>
+					<div data-tour-step="5" title="Debug">
+						Pour débugguer une application depuis votre IDE, il va falloir activer JPDA sur JBoss puis se connecter aux ports de debug depuis votre IDE
+						<h4>Activer le mode debug de JBoss</h4>
+						<p>Pour activer le support JPDA sur une instance Kermit, il faut utiliser les <b>markers</b>. Ces fichiers permettent entre autre de configurer les cartridges que votre application utilise.</p>
+						<p>Dans notre cas, à la racine du projet, il faut faire :</p>
+						<div class="cmd"><code>touch .openshift/markers/enable_jpda</code></div>
+						<div class="cmd"><code>git add .openshift/markers/enable_jpda</code></div>
+						<div class="cmd"><code>git commit -m "enable jdpa"</code></div>
+						<div class="cmd"><code>git push</code></div>
+					</div>
+					<div data-tour-step="6" title="Debug (suite)">
+						Une fois que l'application a redémarré, les ports JPDA sont en écoute sur l'application. 
+						Cependant, il est impossible de joindre ces ports qui sont attachés à des IP internes à Kermit.
+						<h4>Forwarder les ports de debug jusqu'à la machine locale</h4>
+						<p>Pour les joindre, il va falloir utiliser le mécanisme de <b>port-forwarding</b> en lançant :</p>
+						<code class="cmd">rhc port-forward {{appName}}</code>
+						<p>Ensuite, il suffit de lancer une session de <b>remote-debug</b> depuis votre IDE pour debugger <b>localhost:8787</b></p>
+						<video src="video/create_remote_debug_eclipse.mp4"  controls/>
+					</div>
+					<div data-tour-step="7" title="World Wide Web">
+						Comment publier mon application sur Internet ?<br/>
+						<br/>
+						Si vous êtes sur une instance Kermit qui le propose (Orange Beta), il suffit de faire :<br/>
+						<br/>
+						<code class="cmd">rhc alias add {{appName}} {{appPublicDNS()}}</code>
+					</div>
+				</section>
+			</section>
+		</footer>
+		
+		<section class="logo">
+			<span>
+				<div>App inspired by <a href="http://todomvc.com">TodoMVC</a></div>
+				<div>Contact <a href="mailto:codex.kermit-support@rd.francetelecom.com">Kermit Team</a></div>
+			</span>
+			<img src="kermit.jpg"></img>
+		</section>
+		<script src="bower_components/todomvc-common/base.js"></script>
+		<script src="bower_components/jquery/jquery.js"></script>
+		<script src="bower_components/angular/angular.js"></script>
+		<script src="js/app.js"></script>
+		<script src="js/controllers/todoCtrl.js"></script>
+		<script src="js/services/todoStorage.js"></script>
+		<script src="js/directives/todoFocus.js"></script>
+		<script src="js/directives/todoBlur.js"></script>
+		<script src="js/directives/todoEscape.js"></script>
+		
+		<script src="hopscotch/js/hopscotch-0.1.2.js"></script>
+		<script src="js/controllers/tourCtrl.js"></script>
+		
+	</body>
+</html>

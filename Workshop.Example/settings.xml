@@ -1,0 +1,10 @@
+<settings>
+    <proxies>
+        <proxy>
+            <active>true</active>
+            <protocol>http</protocol>
+            <host>proxy-internet.internal.fr</host>
+            <port>3128</port>
+        </proxy>
+    </proxies>
+</settings>
