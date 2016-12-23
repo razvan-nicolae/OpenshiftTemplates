@@ -159,7 +159,7 @@
 ########################
 ### Service FrontEnd ###
 ######################## 
-- kind: "Service"
+    - kind: "Service"
       apiVersion: "v1"
       metadata: 
         name: "${APPLICATION_NAME}"
