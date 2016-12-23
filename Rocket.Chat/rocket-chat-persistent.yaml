@@ -91,7 +91,7 @@ objects:
   kind: "DeploymentConfig"
   metadata:
     creationTimestamp: null
-    name: ${DATABASE_SERVICE_NAME}
+    name: "${DATABASE_SERVICE_NAME}"
     labels:
       name: "${DATABASE_SERVICE_NAME}"
     annotations:
@@ -181,6 +181,8 @@ objects:
     name: "${APPLICATION_NAME}"
     annotations: 
       description: "Exposes and load balances the application pods"
+    labels:
+      name: "${APPLICATION_NAME}"
   spec:
     ports:
       - name: 3000-tcp
