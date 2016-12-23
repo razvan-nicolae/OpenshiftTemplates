@@ -183,7 +183,7 @@
     - name: "SOURCE_REPOSITORY_CONTEXT"
       displayName: "Git Repository Context Directory"
       description: "The location inside the repository where your application source code resides."
-      value: "Workshop.Example"
+      value: "Workshop.Example.Ephemeral"
     - name: "WEBHOOK_SECRET"
       displayName: "Git Webhook Secret"
       description: "A secret string used to configure the Git webhook."
