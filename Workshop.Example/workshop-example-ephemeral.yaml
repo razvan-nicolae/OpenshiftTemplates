@@ -5,18 +5,14 @@
   kind: "Template"
   apiVersion: "v1"
   metadata: 
-    name: "workshop-example"
+    name: "workshop-example-ephemeral"
     annotations: 
       description: "An example To Do List Application"
-      tags: "instant-app,jboss,workshop,kermit"
+      tags: "quickstart,instant-app,jboss,workshop,kermit"
       iconClass: "icon-jboss"
   labels: 
     template: "workshop-example"
   objects:
-#############################
-# Layer 0: OpenShift Images #
-#############################
-
 ###################
 # Layer 2: Images #
 ###################	  	  
@@ -27,13 +23,16 @@
         annotations: 
           description: "Keeps track of changes in the application image"
         labels:
-          application: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
         spec:
           dockerImageRepository: {}
         tags:
           name: latest
 ########################
 # Layer 3: Deployments #
+########################
+########################
+####### FrontEnd #######
 ########################
     - 
       kind: "DeploymentConfig"
@@ -43,20 +42,18 @@
         annotations: 
           description: "Defines how to deploy the application server"
         labels:
-          deploymentConfig: "${APPLICATION_NAME}"
-          application: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
       spec:
         replicas: 1
         selector:
-          deploymentConfig: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
         strategy: 
           type: "Rolling"
         template:
           metadata:
             name: "${APPLICATION_NAME}"
             labels: 
-              deploymentConfig: "${APPLICATION_NAME}"
-              application: "${APPLICATION_NAME}"
+              name: "${APPLICATION_NAME}"
           spec:
             containers:
             - name: "${APPLICATION_NAME}"
@@ -86,6 +83,9 @@
 #########################
 # Layer 4: Abstractions #
 #########################
+########################
+### Service FrontEnd ###
+########################
     - kind: "Service"
       apiVersion: "v1"
       metadata: 
@@ -93,7 +93,7 @@
         annotations: 
           description: "Exposes and load balances the application pods"
         labels:
-          application: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
       spec: 
         ports:
           - name: "app-port"
@@ -105,7 +105,10 @@
             protocol: TCP
             targetPort: 8443
         selector: 
-          deploymentConfig: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
+########################
+######## Route #########
+######################## 
     - kind: "Route"
       apiVersion: "v1"
       metadata: 
@@ -113,7 +116,7 @@
         annotations: 
           description: "Route for application's service"
         labels:
-          application: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
       spec: 
         host: ""
         port:
@@ -131,13 +134,14 @@
         annotations: 
           description: "Defines how to build the application"
       labels:
-        application: "${APPLICATION_NAME}"
+        name: "${APPLICATION_NAME}"
       spec: 
         source: 
           type: "Git"
           git: 
             uri: "${SOURCE_REPOSITORY_URL}"
             ref: "master"
+          contextDir: "${SOURCE_REPOSITORY_CONTEXT}"
         strategy: 
           type: "Source"
           sourceStrategy: 
@@ -175,7 +179,11 @@
     - name: "SOURCE_REPOSITORY_URL"
       displayName: "Git Repository URL"
       description: "The URL of the repository with your application source code."
-      value: "https://github.com/orangekmt/workshop-example.git"
+      value: "https://github.com/orangekmt/OpenshiftTemplates.git"
+    - name: "SOURCE_REPOSITORY_CONTEXT"
+      displayName: "Git Repository Context Directory"
+      description: "The location inside the repository where your application source code resides."
+      value: "Workshop.Example"
     - name: "WEBHOOK_SECRET"
       displayName: "Git Webhook Secret"
       description: "A secret string used to configure the Git webhook."
