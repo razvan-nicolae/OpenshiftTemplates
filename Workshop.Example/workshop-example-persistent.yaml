@@ -226,9 +226,9 @@
           description: "creates an persistent volume claim"
         labels:
           name: "${DATABASE_SERVICE_NAME}
-      spec: 
-        accessModes: 
-          - "ReadWriteMany" 
+      spec:
+        accessModes:
+          - "ReadWriteMany"
         resources:
           requests:
             storage: "${VOLUME_CAPACITY}"
