@@ -95,7 +95,7 @@
         name: "${DATABASE_SERVICE_NAME}"
         annotations: 
           description: "Defines how to deploy the database"
-        labels
+        labels:
           name: "${DATABASE_SERVICE_NAME}"
       spec:
         replicas: 1
