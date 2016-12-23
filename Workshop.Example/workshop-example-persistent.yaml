@@ -45,7 +45,7 @@
       spec:
         replicas: 1
         selector:
-          deploymentConfig: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"
         strategy: 
           type: "Rolling"
         template:
