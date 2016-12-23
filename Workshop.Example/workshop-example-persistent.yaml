@@ -196,7 +196,7 @@
             port: 3306
             targetPort: 3306
         selector: 
-          deploymentConfig: "${DATABASE_SERVICE_NAME}"
+          name: "${DATABASE_SERVICE_NAME}"
 ########################
 ######## Route #########
 ########################    
@@ -225,7 +225,7 @@
         annotations: 
           description: "creates an persistent volume claim"
         labels:
-          application: "${DATABASE_SERVICE_NAME}"
+          name: "${DATABASE_SERVICE_NAME}"
       spec: 
         accessModes: 
           - "ReadWriteMany" 
