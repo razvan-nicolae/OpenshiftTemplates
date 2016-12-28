@@ -162,7 +162,7 @@
     - kind: "Service"
       apiVersion: "v1"
       metadata: 
-        name: "${APPLICATION_NAME}"-service
+        name: "${APPLICATION_NAME}-service"
         annotations: 
           description: "Exposes and load balances the application pods"
         labels:
@@ -185,7 +185,7 @@
     - kind: "Route"
       apiVersion: "v1"
       metadata: 
-        name: "${APPLICATION_NAME}"-route
+        name: "${APPLICATION_NAME}-route"
         annotations: 
           description: "Route for application's service"
         labels:
@@ -196,7 +196,7 @@
           targetPort: 8080
         to: 
           kind: "Service"
-          name: "${APPLICATION_NAME}"-service
+          name: "${APPLICATION_NAME}-service"
 ########################
 ######### PVC #########
 ########################           
