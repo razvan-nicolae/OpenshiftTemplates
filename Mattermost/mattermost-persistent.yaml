@@ -10,8 +10,28 @@ metadata:
     description: "Mattermost with a MySQL database running with a Persistent storage"
     tags: "quickstart,mysql,instant-app,kermit"
 labels: 
-  template: "rocket-chat"
+  template: "mattermost"
 objects:
+###################
+# Layer 0: Images #
+###################
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: centos
+  spec:
+    dockerImageRepository: docker.io/centos
+  tags:
+    - name: "latest"
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    description: "This is a GO 1.6 builder"
+    name: "go-16-centos7"
+  spec:
+    dockerImageRepository: "goern/go-16-centos7"
+  tags:
+    - name: "latest"
 ###################
 # Layer 2: Images #
 ###################
