@@ -236,7 +236,7 @@ objects:
 - kind: "BuildConfig"
   apiVersion: v1
   metadata:
-    name: "${APPLICATION_NAME}-go-platform"
+    name: "${APPLICATION_NAME}-platform"
     annotations:
       description: "Defines how to build the mattermost platform with Go"
   spec:
@@ -254,7 +254,7 @@ objects:
     output:
       to:
         kind: "ImageStreamTag"
-        name: "${APPLICATION_NAME}-go-platform"
+        name: "${APPLICATION_NAME}-platform:latest"
     triggers:
       - type: "ImageChange"
       - type: "ConfigChange"
