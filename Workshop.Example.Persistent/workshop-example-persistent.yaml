@@ -96,7 +96,7 @@
         annotations: 
           description: "Defines how to deploy the database"
         labels:
-          name: "${DATABASE_SERVICE_NAME}"
+          name: "${APPLICATION_NAME}"
       spec:
         replicas: 1
         selector: 
@@ -162,7 +162,7 @@
     - kind: "Service"
       apiVersion: "v1"
       metadata: 
-        name: "${APPLICATION_NAME}"
+        name: "${APPLICATION_NAME}"-service
         annotations: 
           description: "Exposes and load balances the application pods"
         labels:
@@ -178,32 +178,14 @@
             protocol: TCP
             targetPort: 8443
         selector: 
-          name: "${APPLICATION_NAME}"
-########################
-### Service BackEnd ####
-########################          
-    - kind: "Service"
-      apiVersion: "v1"
-      metadata: 
-        name: "${DATABASE_SERVICE_NAME}"
-        annotations: 
-          description: "Exposes the database server"
-        labels:
-          name: "${DATABASE_SERVICE_NAME}"
-      spec: 
-        ports: 
-          - name: "db-port"
-            port: 3306
-            targetPort: 3306
-        selector: 
-          name: "${DATABASE_SERVICE_NAME}"
+          deploymentconfig: ${APPLICATION_NAME}
 ########################
 ######## Route #########
 ########################    
     - kind: "Route"
       apiVersion: "v1"
       metadata: 
-        name: "${APPLICATION_NAME}"
+        name: "${APPLICATION_NAME}"-route
         annotations: 
           description: "Route for application's service"
         labels:
