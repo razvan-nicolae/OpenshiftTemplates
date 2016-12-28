@@ -196,7 +196,7 @@
           targetPort: 8080
         to: 
           kind: "Service"
-          name: "${APPLICATION_NAME}"
+          name: "${APPLICATION_NAME}"-service
 ########################
 ######### PVC #########
 ########################           
