@@ -300,25 +300,25 @@ parameters:
   displayName: Database Service Name
   name: DATABASE_SERVICE_NAME
   required: true
-  value: mysql
+  value: mattermost-db
 - description: Username for MySQL user that will be used for accessing the database.
   displayName: MySQL User
   from: user[A-Z0-9]{3}
   name: MYSQL_USER
   required: true
-  value: mmuser
+  value: mysql
 - description: Password for the MySQL user.
   displayName: MySQL Password
   from: '[a-zA-Z0-9]{16}'
   generate: expression
   name: MYSQL_PASSWORD
   required: true
-  value: mostest
+  value: mysql
 - description: Name of the MySQL database accessed.
   displayName: MySQL Database Name
   name: MYSQL_DATABASE
   required: true
-  value: mattermost_test
+  value: mattermost_db
 - description: Volume space available for data, e.g. 512Mi, 2Gi.
   displayName: Volume Capacity
   name: VOLUME_CAPACITY
