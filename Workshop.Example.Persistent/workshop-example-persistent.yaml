@@ -136,10 +136,10 @@
                   - name: "MYSQL_DATABASE"
                     value: "${DATABASE_NAME}"
                 volumeMounts: 
-                  - name: "${DATABASE_SERVICE_NAME}-volume"
+                  - name: "${DATABASE_SERVICE_NAME}-vol"
                     mountPath: "/var/lib/mysql/data"
             volumes: 
-              - name: "${DATABASE_SERVICE_NAME}-volume"
+              - name: "${DATABASE_SERVICE_NAME}-vol"
                 persistentVolumeClaim:
                   claimName: "${DATABASE_SERVICE_NAME}-pvc"
         triggers: 
@@ -162,7 +162,7 @@
     - kind: "Service"
       apiVersion: "v1"
       metadata: 
-        name: "${APPLICATION_NAME}-service"
+        name: "${APPLICATION_NAME}-svc"
         annotations: 
           description: "Exposes and load balances the application pods"
         labels:
@@ -178,7 +178,7 @@
             protocol: TCP
             targetPort: 8443
         selector: 
-          deploymentconfig: ${APPLICATION_NAME}
+          deploymentconfig: "${APPLICATION_NAME}"
 ########################
 ######## Route #########
 ########################    
@@ -196,7 +196,7 @@
           targetPort: 8080
         to: 
           kind: "Service"
-          name: "${APPLICATION_NAME}-service"
+          name: "${APPLICATION_NAME}-svc"
 ########################
 ######### PVC #########
 ########################           
@@ -265,7 +265,7 @@
       displayName: "APPLICATION_NAME"
       description: "The name assigned to all of the objects defined in this template."
       required: true
-      value: "workshop-persistent"
+      value: "workshop"
     - name: "SOURCE_REPOSITORY_URL"
       displayName: "Git Repository URL"
       description: "The URL of the repository with your application source code."
@@ -283,7 +283,7 @@
       displayName: "Database Service Name"
       description: "The name assigned to all of the DB objects defined in this template."
       required: true
-      value: "workshop-persistent-db"
+      value: "workshop-db"
     - name: "DATABASE_NAME"
       displayName: "Database Name"
       value: "mysqldb"
