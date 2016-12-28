@@ -52,7 +52,7 @@
           metadata:
             name: "${APPLICATION_NAME}"
             labels: 
-              name: "${APPLICATION_NAME}"
+              deploymentConfig: "${APPLICATION_NAME}"
           spec:
             containers:
             - name: "${APPLICATION_NAME}"
@@ -107,7 +107,7 @@
           metadata: 
             name: "${DATABASE_SERVICE_NAME}"
             labels: 
-              name: "${APPLICATION_NAME}"
+              deploymentConfig: "${DATABASE_SERVICE_NAME}"
           spec: 
             containers: 
               - name: "mysql"
