@@ -250,7 +250,7 @@
           git: 
             uri: "${SOURCE_REPOSITORY_URL}"
             ref: "master"
-            contextDir: "${SOURCE_REPOSITORY_CONTEXT}"
+          contextDir: "${SOURCE_REPOSITORY_CONTEXT}"
         strategy: 
           type: "Source"
           sourceStrategy:
