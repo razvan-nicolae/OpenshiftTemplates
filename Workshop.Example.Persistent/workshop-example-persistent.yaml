@@ -180,6 +180,25 @@
         selector: 
           deploymentconfig: "${APPLICATION_NAME}"
 ########################
+### Service BackEnd ####
+######################## 
+    - kind: "Service"
+      apiVersion: "v1"
+      metadata: 
+        name: "${DATABASE_SERVICE_NAME}-svc"
+        annotations: 
+          description: "Exposes and load balances the application pods"
+        labels:
+          name: "${APPLICATION_NAME}"
+      spec: 
+        ports:
+          - name: "db-port"
+            port: 3306
+            protocol: TCP
+            targetPort: 3306
+        selector: 
+          deploymentconfig: "${DATABASE_SERVICE_NAME}"
+########################
 ######## Route #########
 ########################    
     - kind: "Route"
