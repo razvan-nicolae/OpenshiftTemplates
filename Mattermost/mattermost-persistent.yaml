@@ -16,28 +16,13 @@ objects:
 # Layer 2: Images #
 ###################
 - apiVersion: v1
-  kind: ImageStream
-  metadata:
-    name: centos
-  spec:
-    dockerImageRepository: docker.io/centos
-- kind: ImageStream
-  apiVersion: v1
-  metadata:
-    description: "This is a GO1.6 builder"
-    name: "s2i-go-16"
-  spec:
-    dockerImageRepository: "goern/go-16-centos7"
-  tags:
-    - name: "latest"
-- apiVersion: v1
   kind: "ImageStream"
   metadata:
     name: ${APPLICATION_NAME}
 - apiVersion: v1
-  kind: ImageStream
+  kind: "ImageStream"
   metadata:
-    name: ${APPLICATION_NAME}-go-platform
+    name: ${APPLICATION_NAME}-platform
 ########################
 # Layer 3: Deployments #
 ########################
@@ -250,7 +235,7 @@ objects:
       sourceStrategy:
         from:
           kind: "ImageStreamTag"
-          name: "s2i-go-16:latest"
+          name: "goern/go-16-centos7:latest"
     output:
       to:
         kind: "ImageStreamTag"
@@ -279,7 +264,7 @@ objects:
       dockerStrategy:
         from:
           kind: ImageStreamTag
-          name: centos:latest
+          name: docker.io/centos:latest
       type: Docker
     triggers:
     - type: ConfigChange
