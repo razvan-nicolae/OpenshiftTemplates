@@ -327,6 +327,9 @@ parameters:
   description: A secret string used to configure the GitHub webhook
   generate: expression
   from: "[a-zA-Z0-9]{40}"
+- name: APP_VOLUME_CAPACITY
+  description: Database Volume capacity
+  value: 1Gi
 - name: DATABASE_SERVICE_NAME
   description: Database service name
   value: mysql
@@ -340,3 +343,6 @@ parameters:
   description: Database user password
   generate: expression
   from: "[a-zA-Z0-9]{16}"
+- name: DB_VOLUME_CAPACITY
+  description: Database Volume capacity
+  value: 1Gi
