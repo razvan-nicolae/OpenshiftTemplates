@@ -52,7 +52,7 @@ objects:
         - ${APPLICATION_NAME}
         from:
           kind: ImageStreamTag
-          name: ${APPLICATION_NAME}:latest
+          name: "${APPLICATION_NAME}:latest"
     - type: ConfigChange
     replicas: 1
     selector:
@@ -105,10 +105,10 @@ objects:
       imageChangeParams:
         automatic: true
         containerNames:
-        - $${APPLICATION_NAME}
+        - ${APPLICATION_NAME}
         from:
           kind: ImageStreamTag
-          name: $${APPLICATION_NAME}:latest
+          name: ${APPLICATION_NAME}:latest
   status: {}
 ########################
 ####### BackEnd ########
@@ -163,7 +163,7 @@ objects:
         volumes:
         - name: "${DATABASE_SERVICE_NAME}-vol"
           persistentVolumeClaim:
-            claimName: ${DATABASE_SERVICE_NAME}-pvc
+            claimName: "${DATABASE_SERVICE_NAME}-pvc"
     test: false
     triggers:
     - type: ConfigChange
