@@ -112,7 +112,7 @@
     - kind: "Route"
       apiVersion: "v1"
       metadata: 
-        name: "${APPLICATION_NAME}-route"
+        name: "${APPLICATION_NAME}"
         annotations: 
           description: "Route for application's service"
         labels:
@@ -149,9 +149,6 @@
               kind: "ImageStreamTag"
               namespace: "openshift"
               name: "jboss-webserver30-tomcat7-openshift:latest"
-            env:
-              - name: MAVEN_ARGS_APPEND
-                value: 'package -Popenshift -DskipTest -s settings.xml'
         output: 
           to: 
             kind: "ImageStreamTag"
