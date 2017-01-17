@@ -1,9 +1,6 @@
 ---
-##################
-# BEGIN TEMPLATE #
-##################
-kind: "Template"
 apiVersion: v1
+kind: "Template"
 metadata:
   name: wordpress-persistent
   annotations:
@@ -13,284 +10,39 @@ metadata:
 labels:
   template: wordpress-persistent
 objects:
-###################
-# Layer 0: Images #
-###################
-###################
-# Layer 2: Images #
-###################
-- kind: "ImageStream"
-  apiVersion: v1
-  metadata:
-    name: ${APPLICATION_NAME}
-    annotations:
-      description: Keeps track of changes in the Application image
-    labels:
-      name: ${APPLICATION_NAME}	  
-########################
-# Layer 3: Deployments #
-########################
-########################
-####### FrontEnd #######
-########################	    
-- kind: DeploymentConfig
-  apiVersion: v1
-  metadata:
-    name: ${APPLICATION_NAME}
-    annotations:
-      description: "Defines how to deploy the application server"
-    labels:
-      name: ${APPLICATION_NAME}	
-  spec:
-    strategy:
-      type: Rolling
-    triggers:
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-        - ${APPLICATION_NAME}
-        from:
-          kind: ImageStreamTag
-          name: "${APPLICATION_NAME}:latest"
-    - type: ConfigChange
-    replicas: 1
-    selector:
-      name: ${APPLICATION_NAME}
-    template:
-      metadata:
-        name: ${APPLICATION_NAME}
-        labels:
-          name: ${APPLICATION_NAME}
-      spec:
-        containers:
-        - name: ${APPLICATION_NAME}
-          image: ${APPLICATION_NAME}:latest
-          imagePullPolicy: Always
-          ports:
-          - containerPort: 8080
-            protocol: TCP
-          env:
-          - name: MYSQL_USER
-            value: ${MYSQL_USER}
-          - name: MYSQL_PASSWORD
-            value: ${MYSQL_PASSWORD}
-          - name: MYSQL_DATABASE
-            value: ${MYSQL_DATABASE}
-          - name: WORDPRESS_DB_HOST
-            value: "${DATABASE_SERVICE_NAME}"
-          - name: WORDPRESS_DB_PASSWORD
-            value: ${MYSQL_PASSWORD}
-          - name: WORDPRESS_DB_NAME
-            value: ${MYSQL_DATABASE}
-          - name: WORDPRESS_DB_USER
-            value: ${MYSQL_USER}
-          resources: {}
-          terminationMessagePath: /dev/termination-log
-          volumeMounts:
-          - name: "${APPLICATION_NAME}-data"
-            mountPath: "/var/www/html"
-        dnsPolicy: ClusterFirst
-        restartPolicy: Always
-        securityContext: {}
-        terminationGracePeriodSeconds: 30
-        volumes:
-        - name: "${APPLICATION_NAME}-vol"
-          persistentVolumeClaim:
-            claimName: ${APPLICATION_NAME}-pvc
-    test: false
-    triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-        - ${APPLICATION_NAME}
-        from:
-          kind: ImageStreamTag
-          name: ${APPLICATION_NAME}:latest
-  status: {}
-########################
-####### BackEnd ########
-######################## 
-- kind: DeploymentConfig
-  apiVersion: v1
-  metadata:
-    name: "${DATABASE_SERVICE_NAME}"
-    annotations:
-      description: Defines how to deploy the database
-    labels:
-      name: ${APPLICATION_NAME}
-  spec:
-    strategy:
-      type: Recreate
-    triggers:
-    - type: ConfigChange
-    replicas: 1
-    selector:
-      name: "${DATABASE_SERVICE_NAME}"
-    template:
-      metadata:
-        name: "${DATABASE_SERVICE_NAME}"
-        labels:
-          name: "${DATABASE_SERVICE_NAME}"
-      spec:
-        containers:
-        - name: "${DATABASE_SERVICE_NAME}"
-          image: openshift/mysql:latest
-          ports:
-          - containerPort: 3306
-            protocol: TCP
-          env:
-          - name: MYSQL_USER
-            value: ${MYSQL_USER}
-          - name: MYSQL_PASSWORD
-            value: ${MYSQL_PASSWORD}
-          - name: MYSQL_DATABASE
-            value: ${MYSQL_DATABASE}
-          - name: WORDPRESS_DB_HOST
-            value: "${DATABASE_SERVICE_NAME}"
-          - name: WORDPRESS_DB_PASSWORD
-            value: ${MYSQL_PASSWORD}
-          - name: WORDPRESS_DB_NAME
-            value: ${MYSQL_DATABASE}
-          - name: WORDPRESS_DB_USER
-            value: ${MYSQL_USER}
-          resources: {}
-          volumeMounts:
-          - mountPath: /var/lib/mysql/data
-            name: "${DATABASE_SERVICE_NAME}-vol"
-        volumes:
-        - name: "${DATABASE_SERVICE_NAME}-vol"
-          persistentVolumeClaim:
-            claimName: "${DATABASE_SERVICE_NAME}-pvc"
-    test: false
-    triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-        - ${DATABASE_SERVICE_NAME}
-        from:
-          kind: ImageStreamTag
-          name: ${DATABASE_SERVICE_NAME}:latest
-          namespace: openshift
-  status: {}
-#########################
-# Layer 4: Abstractions #
-#########################
-########################
-### Service FrontEnd ###
-######################## 			
-- kind: Service
-  apiVersion: v1
-  metadata:
-    name: "${APPLICATION_NAME}"
-    annotations:
-      description: "Exposes and load balances the frontend application pods"
-    labels:
-      name: ${APPLICATION_NAME}
-  spec:
-    ports:
-    - name: 8080-tcp
-      port: 8080
-      protocol: TCP
-      targetPort: 8080
-    selector:
-      name: ${APPLICATION_NAME}
-  status:
-    loadBalancer: {}
-########################
-### Service BackEnd ####
-######################## 
-- kind: Service
-  apiVersion: v1
-  metadata:
-    name: "${DATABASE_SERVICE_NAME}"
-    annotations:
-      description: "Exposes the database server pods"
-    labels:
-      name: ${APPLICATION_NAME}
-  spec:
-    ports:
-    - name: 3306-tcp
-      port: 3306
-      protocol: TCP
-      targetPort: 3306
-    selector:
-      name: "${DATABASE_SERVICE_NAME}"
-  status:
-    loadBalancer: {}
-########################
-######## Route #########
-########################
-- kind: Route
-  apiVersion: v1
-  metadata:
-    name: "${APPLICATION_NAME}-route"
-    labels:
-      name: "${APPLICATION_NAME}"
-  spec:
-    port:
-      targetPort: 8080
-    to:
-      kind: Service
-      name: "${APPLICATION_NAME}-svc"
-    tls:
-      termination: edge
-      insecureEdgeTerminationPolicy: Allow
-########################
-########## PVC #########
-########################
-########################
-##### PVC FrontEnd #####
-########################
-- apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    name: ${APPLICATION_NAME}-pvc
-    labels:
-      name: ${APPLICATION_NAME}
-  spec:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-      requests:
-        storage: ${APP_VOLUME_CAPACITY}
-########################
-##### PVC BackEnd ######
-########################
-- apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    name: ${DATABASE_SERVICE_NAME}-pvc
-    labels:
-      name: ${APPLICATION_NAME}
-  spec:
-    accessModes:
-    - ReadWriteOnce
-    resources:
-      requests:
-        storage: ${DB_VOLUME_CAPACITY}
-########################
-### Layer 1: Builds ####
-########################
+# +++++++++++++++++++++++++++
+# +++ LAYER 0 BASE IMAGES +++
+# +++++++++++++++++++++++++++
+#
+# +++++++++++++++++++++++++++
+# ++++++ LAYER 1 BUILDS +++++
+# +++++++++++++++++++++++++++
 - kind: "BuildConfig"
   apiVersion: v1
   metadata:
-    name: ${APPLICATION_NAME}
-    annotations:
-      description: "Defines how to build the PHP frontend of the application"
-    labels:
       name: ${APPLICATION_NAME}
+      labels:
+        app: ${APPLICATION_NAME}
+        annotations: 
+          description: "Defines how to build the application"
   spec:
+    triggers: 
+      - 
+        type: ImageChange
+        imageChange: {}
+      - 
+        type: ConfigChange
+      - 
+        type: GitHub
+        github: 
+          secret: "${WEBHOOK_SECRET}"
+    runPolicy: Serial
     source:
       type: Git
       git:
         uri: "${SOURCE_REPOSITORY_URL}"
         ref: "${SOURCE_REPOSITORY_REF}"
-      contextDir: "${CONTEXT_DIR}"
+      contextDir: "${SOURCE_REPOSITORY_CONTEXT}"
     strategy:
       type: Source
       sourceStrategy:
@@ -302,47 +54,377 @@ objects:
       to:
         kind: ImageStreamTag
         name: ${APPLICATION_NAME}:latest
+# +++++++++++++++++++++++++++
+# ++++++ LAYER 2 IMAGES +++++
+# +++++++++++++++++++++++++++
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: "${APPLICATION_NAME}"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Resulting Docker Image after the buit of my application frontend."
+  spec:
+    tags:
+      -
+        tag: latest  
+# +++++++++++++++++++++++++++
+# +++ LAYER 3 DEPLOYMENTS +++
+# +++++++++++++++++++++++++++
+# ///////////////////////////
+# /// FRONTEND DEPLOYMENT ///
+# ///////////////////////////	    
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${APPLICATION_NAME}
+    labels:
+      app: ${APPLICATION_NAME} 
+    annotations: 
+      description: "Defines how to deploy the application server"
+  spec:
+    strategy: 
+      type: Rolling
+      rollingParams:
+        updatePeriodSeconds: 1
+        intervalSeconds: 1
+        timeoutSeconds: 600
+        maxUnavailable: 25%
+        maxSurge: 25%
     triggers:
-    - type: ImageChange
-    - type: ConfigChange
-    - type: GitHub
-      github:
-        secret: "${GITHUB_WEBHOOK_SECRET}"
-##############
-# Parameters #
-##############
-parameters:
-- name: APPLICATION_NAME
-  description: "The name assigned to all of the objects defined in this template."
-  required: true
-  value: wordpress
-- name: SOURCE_REPOSITORY_URL
-  description: The URL of the repository with your application source code
-  value: https://github.com/wordpress/wordpress.git
-- name: SOURCE_REPOSITORY_REF
-  description: Set this to a branch name, tag or other ref of your repository if you are not using the default branch
-- name: CONTEXT_DIR
-  description: Set this to the relative path to your project if it is not in the root of your repository
-- name: GITHUB_WEBHOOK_SECRET
-  description: A secret string used to configure the GitHub webhook
-  generate: expression
-  from: "[a-zA-Z0-9]{40}"
-- name: APP_VOLUME_CAPACITY
-  description: Database Volume capacity
-  value: 1Gi
-- name: DATABASE_SERVICE_NAME
-  description: Database service name
-  value: mysql
-- name: DATABASE_NAME
-  description: Database name
-  value: wordpress
-- name: DATABASE_USER
-  description: Database user name
-  value: wordpress
-- name: DATABASE_PASSWORD
-  description: Database user password
-  generate: expression
-  from: "[a-zA-Z0-9]{16}"
-- name: DB_VOLUME_CAPACITY
-  description: Database Volume capacity
-  value: 1Gi
+    - 
+      type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPLICATION_NAME}
+        from:
+          kind: ImageStreamTag
+          name: "${APPLICATION_NAME}:latest"
+    - 
+      type: ConfigChange
+    replicas: 1
+    test: false
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}
+    template:
+      metadata:
+        name: ${APPLICATION_NAME}
+        labels: 
+          deploymentConfig: ${APPLICATION_NAME}  
+      spec:
+        volumes:
+        - 
+          name: "${APPLICATION_NAME}-vol"
+          persistentVolumeClaim:
+            claimName: ${APPLICATION_NAME}-pvc
+        containers:
+        - 
+          name: ${APPLICATION_NAME}
+          image: ${APPLICATION_NAME}:latest
+          ports:
+            - 
+              name: "port-http"
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - 
+              name: MYSQL_USER
+              value: ${MYSQL_USER}
+            - 
+              name: MYSQL_PASSWORD
+              value: ${MYSQL_PASSWORD}
+            - 
+              name: MYSQL_DATABASE
+              value: ${MYSQL_DATABASE}
+            - 
+              name: WORDPRESS_DB_USER
+              value: ${MYSQL_USER}
+            - 
+              name: WORDPRESS_DB_PASSWORD
+              value: ${MYSQL_PASSWORD}
+            - 
+              name: WORDPRESS_DB_NAME
+              value: ${MYSQL_DATABASE}
+            - 
+              name: WORDPRESS_DB_HOST
+              value: ${APPLICATION_NAME}-db-svc
+            resources: {}
+            volumeMounts:
+              - 
+                name: "${APPLICATION_NAME}-vol"
+                mountPath: "/var/www/html"
+            terminationMessagePath: /dev/termination-log
+            imagePullPolicy: Always
+            securityContext:
+              capabilities: {}
+              privileged: false
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# //////////////////////////
+# /// BACKEND DEPLOYMENT ///
+# //////////////////////////
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${APPLICATION_NAME}-db
+    labels:
+      app: ${APPLICATION_NAME}  
+    annotations: 
+      description: "Defines how to deploy the application database"
+  spec:
+    strategy: 
+      type: Recreate
+      recreateParams:
+        timeoutSeconds: 600	
+    triggers:
+      -
+        type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - ${APPLICATION_NAME}-db
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: mysql:latest
+      -
+        type: ConfigChange
+    replicas: 1
+    test: false
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}-db
+    template:
+      metadata:
+        name: ${APPLICATION_NAME}-db
+        labels: 
+          deploymentConfig: ${APPLICATION_NAME}-db  
+      spec:
+        volumes:
+          -
+            name: ${APPLICATION_NAME}-db-vol
+            persistentVolumeClaim:
+              claimName: ${APPLICATION_NAME}-db-pvc
+        containers:
+          - 
+            name: "${APPLICATION_NAME}-db"
+            image: "${APPLICATION_NAME}-db"
+            ports:
+              -
+                name: "port-db"
+                containerPort: 3306
+                protocol: TCP
+            env: 
+              - 
+                name: "MYSQL_USER"
+                value: "${MYSQL_USER}"
+              - 
+                name: "MYSQL_PASSWORD"
+                value: "${MYSQL_PASSWORD}"
+              - 
+                name: "MYSQL_DATABASE"
+                value: "${MYSQL_DATABASE}"
+              - 
+                name: WORDPRESS_DB_USER
+                value: ${MYSQL_USER}
+              - 
+                name: WORDPRESS_DB_PASSWORD
+                value: ${MYSQL_PASSWORD}
+              - 
+                name: WORDPRESS_DB_NAME
+                value: ${MYSQL_DATABASE}
+              - 
+                name: WORDPRESS_DB_HOST
+                value: ${APPLICATION_NAME}-db-svc
+            resources: {}
+            volumeMounts:
+              -
+                name: ${APPLICATION_NAME}-db-vol
+                mountPath: /var/lib/mysql/data
+            livenessProbe:
+              tcpSocket:
+                port: 3306
+              initialDelaySeconds: 30
+              timeoutSeconds: 1
+              periodSeconds: 10
+              successThreshold: 1
+              failureThreshold: 3
+            readinessProbe:
+              exec:
+                command: [/bin/sh, '-i', '-c', 'MYSQL_PWD=''${DATABASE_PASSWORD}'' mysql -h 127.0.0.1 -u ${DATABASE_USER} -D ${DATABASE_NAME} -e ''SELECT 1''']        
+              initialDelaySeconds: 5
+              timeoutSeconds: 1
+              periodSeconds: 10
+              successThreshold: 1
+              failureThreshold: 3
+            terminationMessagePath: "/dev/termination-log"
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              capabilities: {}
+              privileged: false		
+        restartPolicy: "Always"
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: "ClusterFirst"
+# +++++++++++++++++++++++++++++++++
+# ++++++ LAYER 4 ABSTRACTIONS +++++
+# +++++++++++++++++++++++++++++++++
+# ////////////////////////
+# /// FRONTEND SERVICE ///
+# ////////////////////////		
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "${APPLICATION_NAME}-svc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Exposes and load balances the application frontend pods."
+  spec:
+    ports:
+      -
+        name: "port-http"
+        protocol: TCP
+        port: 8080
+        targetPort: 8080
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ///////////////////////
+# /// BACKEND SERVICE ///
+# ///////////////////////
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "${APPLICATION_NAME}-db-svc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Exposes and load balances the application database pods."
+  spec:
+    ports:
+      -
+        name: "port-db"
+        protocol: TCP
+        port: 3306
+        targetPort: 3306
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}-db
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////////
+# /// FRONTEND ROUTE /////
+# ////////////////////////
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: "${APPLICATION_NAME}"
+    labels:
+      app: "${APPLICATION_NAME}"
+      network: ${PUBLIC_NETWORK}
+    annotations:
+      description: "The route exposes the frontend service at a hostname."
+  spec:
+    host: "${APPLICATION_HOSTNAME}"
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}-svc
+    port:
+      targetPort: 8080
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Allow
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# //////////////////////////////////////////
+# /// FRONTEND PERSISTENT VOLUME CLAIM /////
+# //////////////////////////////////////////
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: "${APPLICATION_NAME}-pvc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "The pvc used for the application data."
+  spec:
+    accessModes:
+      - "ReadWriteMany"
+    resources:
+      requests:
+        storage: "${APPLICATION_VOLUME_CAPACITY}"
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# /////////////////////////////////////////
+# /// BACKEND PERSISTENT VOLUME CLAIM /////
+# /////////////////////////////////////////
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: "${APPLICATION_NAME}-db-pvc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "The pvc used for the application DB."
+  spec:
+    accessModes:
+      - "ReadWriteMany"
+    resources:
+      requests:
+        storage: "${DATABASE_VOLUME_CAPACITY}"
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////
+# /// PARAMETERS /////
+# ////////////////////
+parameters: 
+  - name: "APPLICATION_NAME"
+    displayName: "Application name"
+    description: "The name assigned to all of the objects defined in this template."
+    required: true
+    value: "wordpress"
+  - name: "APPLICATION_HOSTNAME"
+    displayName: "Application hostname"
+    description: "The hostname for exposing your application on the Internal Network (*.kermit.itn.intraorange) or on the Internet (*.kmt.orange.com)."
+  - name: "PUBLIC_NETWORK"
+    displayName: "Application exposed on Internet Flag"
+    description: "If your application will be exposed on the Internet (HOSTNAME = *.kmt.orange.com) you need to setup this flag with the value: public"
+  - name: SOURCE_REPOSITORY_URL
+    description: The URL of the repository with your application source code
+    required: true
+    value: https://github.com/wordpress/wordpress.git
+  - name: "SOURCE_REPOSITORY_REF"
+    displayName: "Git Repository Reference"
+    description: "The branch/tag/ref inside the repository where your application source code resides."
+    value: "master"
+  - name: "SOURCE_REPOSITORY_CONTEXT"
+    displayName: "Git Repository Context Directory"
+    description: "The location inside the repository where your application source code resides."
+  - name: "WEBHOOK_SECRET"
+    displayName: "Git Webhook Secret"
+    description: "A secret string used to configure the Git webhook."
+    generate: "expression"
+    from: "[a-zA-Z0-9]{40}"
+  - name: "APPLICATION_VOLUME_CAPACITY"
+    displayName: "Application Volume Capacity"
+    description: "Volume space available for data, e.g. 1Gi, 3Gi."
+    value: "3Gi"
+    required: true
+  - name: "MYSQL_DATABASE"
+    displayName: "Database Name"
+    value: "mysqldb"
+  - name: "MYSQL_USER"
+    displayName: "Database User"
+    value: "mysql"
+  - name: "MYSQL_PASSWORD"
+    displayName: "Database Password"
+    value: "mysql"
+  - name: "DATABASE_VOLUME_CAPACITY"
+    displayName: "Database Volume Capacity"
+    description: "Volume space available for data, e.g. 1Gi, 3Gi."
+    value: "3Gi"
+    required: true
