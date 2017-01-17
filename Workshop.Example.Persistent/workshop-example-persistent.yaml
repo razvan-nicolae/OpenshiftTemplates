@@ -96,7 +96,7 @@ objects:
         intervalSeconds: 1
         timeoutSeconds: 600
         maxUnavailable: 25%
-        maxSurge: 25%		
+        maxSurge: 25%
     triggers:
       -
         type: ImageChange
@@ -147,7 +147,7 @@ objects:
             imagePullPolicy: Always
             securityContext:
               capabilities: {}
-              privileged: false	
+              privileged: false
         restartPolicy: "Always"
         terminationGracePeriodSeconds: 30
         dnsPolicy: "ClusterFirst"
@@ -168,7 +168,7 @@ objects:
     strategy: 
       type: Recreate
       recreateParams:
-        timeoutSeconds: 600	
+        timeoutSeconds: 600
     triggers:
       -
         type: ImageChange
@@ -218,7 +218,7 @@ objects:
                 value: "${DATABASE_NAME}"
             resources:
               limits:
-                memory: 512Mi				
+                memory: 512Mi
               requests: {}
             volumeMounts:
               -
@@ -244,7 +244,7 @@ objects:
             imagePullPolicy: IfNotPresent
             securityContext:
               capabilities: {}
-              privileged: false		
+              privileged: false
         restartPolicy: "Always"
         terminationGracePeriodSeconds: 30
         dnsPolicy: "ClusterFirst"
