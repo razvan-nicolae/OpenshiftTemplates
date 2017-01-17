@@ -1,0 +1,638 @@
+# Please edit the object below. Lines beginning with a '#' will be ignored
+#
+# A template describes a set of objects that can be parameterized and processed to produce a list of objects for creation by OpenShift.
+# The objects to create can include anything that users have permission to create within a project.
+# For example services, build configurations, and deployment configurations. 
+# A template may also define a set of labels to apply to every object defined in the template.
+apiVersion: v1
+kind: Template
+metadata:
+# The name of the template
+  name: workshop-persistent
+  annotations:
+#   Optional description for the template
+    description: "An example ToDo List Application with a MySQL Database."
+#   The icon that will be shown in the UI for this template; 
+#   Search the content https://github.com/openshift/origin-web-console/blob/master/dist/styles/fonts/openshift-logos-icon.json
+    iconClass: "icon-jboss"
+#   A list of arbitrary tags that this template will have in the UI
+    tags: "quickstart,instant-app,jboss,mysql,workshop,kermit"
+# A list of labels to apply to all objects on create
+# Defining a label in this way makes it easy for users to find and manage all the objects created from a particular template.
+labels:
+  template: workshop-persistent
+# +++++++++++++++++++++++++++
+# +++ DESIGN OUR TEMPLATE +++
+# +++++++++++++++++++++++++++
+# Best practice approach is to think of a template as a set of layers of resources with the following structure:
+# -> Base Images: Base images we will be using for our containers.
+# -> Builds: Generate an image from source code.
+# -> Images: Images produced by the builds.
+# -> Deployments: What images will be deployed and how.
+# -> Abstractions: Additional resources needed for our application.
+#
+# 	A list of objects the template will create.
+objects:
+# +++++++++++++++++++++++++++
+# +++ LAYER 0 BASE IMAGES +++
+# +++++++++++++++++++++++++++
+# In this first layer, we will need to define all the “base” images we will be using for our containers. 
+# These images typically will not be part of the template, but they need to be identified.
+# An image stream comprises any number of container images identified by tags. 
+# It presents a single virtual view of related images, similar to a Docker image repository.
+# -> Openshift image repository from the integrated Docker Registry
+# -> Docker image repositories from external sources
+# -> Other image repositories from local/private sources
+#
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# It is used mainly when you have external registries images that may need an image stream on openshift
+#
+# +++++++++++++++++++++++++++
+# ++++++ LAYER 1 BUILDS +++++
+# +++++++++++++++++++++++++++
+# This layer defines all the builds we will require for our application. 
+# A build is the process of transforming input parameters into a resulting object. 
+# Most often, the process is used to transform source code into a runnable image.
+# A BuildConfig object is the definition of the entire build process.
+# A build configuration consists of the following key parts:
+# -> A source description (Where is your source code?)
+# -> A strategy for building (How to build your image?)
+#    --> Source-To-Image: Transform your application into a runnable docker image, using a S2I image for building and running your application.
+#    --> Docker: Your Dockerfile will be built into an image. This image will contain both, the runtime and the application already built.
+#    --> Custom: You provide the building method in a Docker image.
+# -> An output description (Where to place the built image?)
+# -> A list of triggers (When and Why will the source be built?)
+#
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# BuildConfig is a template which can be used to create new builds.
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+      name: ${APPLICATION_NAME}
+      labels:
+        app: ${APPLICATION_NAME}
+        annotations: 
+          description: "Defines how to build the application"
+# Spec holds all the input necessary to produce a new build, and the conditions when to trigger them.
+  spec:
+#    Triggers determine how new Builds can be launched. 
+#    If no triggers are defined, a new build can only occur as a result of an explicit client build creation.
+    triggers: 
+      - 
+        type: ImageChange
+        imageChange: {}
+      - 
+        type: ConfigChange
+      - 
+        type: GitHub
+        github: 
+          secret: "${WEBHOOK_SECRET}"
+      - 
+        type: Generic
+        generic: 
+          secret: "${WEBHOOK_SECRET}"
+#   RunPolicy describes how the new build created from this build configuration will be scheduled for execution.
+#   The default value is Serial, which means new builds will run sequentially, and for Parallel will run simultaneously.
+    runPolicy: Serial
+#   Source describes the Source Code Managemet in use.
+    source:
+      type: Git
+      git:
+#       uri points to the source that will be built. The structure of the source will depend on the type of build to run.	  
+        uri: ${SOURCE_REPOSITORY_URL}
+#       ref is the branch/tag/ref to build.
+        ref: ${SOURCE_REPOSITORY_REF}
+#     contextDir specifies the sub-directory where the source code for the application exists. 
+#     This allows to have buildable sources in directory other than root of repository.
+      contextDir: ${SOURCE_REPOSITORY_CONTEXT} 
+#   strategy defines how to perform a build. Source (S2I) / Docker (dockerfile) / Jenkins-Pipeline / custom	  
+    strategy:
+      type: Source
+      sourceStrategy:
+        from: 
+          kind: ImageStreamTag
+          namespace: openshift
+          name: "jboss-webserver30-tomcat7-openshift:latest"
+#       env contains additional environment variables you want to pass into a builder container.
+        env: {}
+#	output describes the Docker image the Strategy should produce.		
+    output:
+#      to defines an optional location to push the output of this build to. Kind must be one of 'ImageStreamTag' or 'DockerImage'. 
+#      This value will be used to look up a Docker image repository to push to.
+      to: 
+        kind: ImageStreamTag
+        name: "${APPLICATION_NAME}:latest"
+# +++++++++++++++++++++++++++
+# ++++++ LAYER 2 IMAGES +++++
+# +++++++++++++++++++++++++++
+# This layer defines all the images produced by the builds. 
+# An image stream comprises any number of container images identified by tags. 
+# It presents a single virtual view of related images, similar to a Docker image repository.
+# -> Openshift image repository from the integrated Docker Registry
+# -> Docker image repositories from external sources
+# -> Other image repositories from local/private sources
+#
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# //////////////////////
+# /// FRONTEND IMAGE ///
+# //////////////////////
+# ImageStream stores a mapping of tags to images, metadata overrides that are applied when images are tagged in a stream, 
+# and an optional reference to a Docker image repository on a registry.
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: "${APPLICATION_NAME}"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Resulting Docker Image after the buit of my application frontend."
+# Spec describes the desired state of this stream
+  spec:
+#   Tags map arbitrary string values to specific image locators
+    tags:
+      -
+        tag: latest
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# /////////////////////
+# /// BACKEND IMAGE ///
+# /////////////////////
+# ImageStream stores a mapping of tags to images, metadata overrides that are applied when images are tagged in a stream, 
+# and an optional reference to a Docker image repository on a registry.
+#
+# +++++++++++++++++++++++++++
+# +++ LAYER 3 DEPLOYMENTS +++
+# +++++++++++++++++++++++++++
+# This layer defines the core of our applications. It defines what will be running in OpenShift.
+# A DeploymentConfig is a definition of what will be deployed and running on OpenShift 3.
+# A deployment configuration consists of the following key parts:
+# -> A replication controller template which describes the application to be deployed. (What will be deployed?)
+# -> The default replica count for the deployment. (How many instances will be deployed and running?)
+# -> A deployment strategy which will be used to execute the deployment. (How it will be deployed?)
+# -> A set of triggers which cause deployments to be created automatically. (When and Why will it be deployed?)
+#
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ///////////////////////////
+# /// FRONTEND DEPLOYMENT ///
+# ///////////////////////////
+# DeploymentConfig represents a configuration for a single deployment (represented as a ReplicationController). 
+# It also contains details about changes which resulted in the current state of the DeploymentConfig.
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${APPLICATION_NAME}
+    labels:
+      app: ${APPLICATION_NAME} 
+    annotations: 
+      description: "Defines how to deploy the application server"
+# Spec represents a desired deployment state and how to deploy to it.
+  spec:
+#   Strategy describes how a deployment is executed. Rolling / Recreate / Custom
+    strategy: 
+      type: Rolling
+      rollingParams:
+#       UpdatePeriodSeconds is the time to wait between individual pod updates.
+        updatePeriodSeconds: 1
+#       IntervalSeconds is the time to wait between polling deployment status after update.
+        intervalSeconds: 1
+#       TimeoutSeconds is the time to wait for updates before giving up.
+        timeoutSeconds: 600
+#       MaxUnavailable is the maximum number of pods that can be unavailable during the update. 
+#       Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%). 
+#       Absolute number is calculated from percentage by rounding up.
+        maxUnavailable: 25%
+#	    MaxSurge is the maximum number of pods that can be scheduled above the original number of pods. 
+#       Value can be an absolute number (ex: 5) or a percentage of total pods at the start of the update (ex: 10%). 
+#       Absolute number is calculated from percentage by rounding up.
+        maxSurge: 25%
+#   Triggers determine how updates to a DeploymentConfig result in new deployments. 
+#   If no triggers are defined, a new deployment can only occur as a result of an explicit client update to the DeploymentConfig.		
+    triggers:
+      -
+        type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - ${APPLICATION_NAME}
+          from:
+            kind: ImageStreamTag
+            name: ${APPLICATION_NAME}:latest
+      -
+        type: ConfigChange
+#   Replicas is the number of desired replicas.
+    replicas: 1
+#   Test ensures that this deployment config will have zero replicas except while a deployment is running. 
+#   This allows the deployment config to be used as a continuous deployment test 
+#   - triggering on images, running the deployment, and then succeeding or failing.
+    test: false
+#   Selector is a label query over pods that should match the Replicas count. Selector label may match the template label.
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}
+#   Template is the object that describes the pod that will be created if insufficient replicas are detected.
+    template:
+      metadata:
+        name: ${APPLICATION_NAME}
+#       Map of string keys and values that can be used to organize and categorize (scope and select) objects. 
+#       May match selectors of replication controllers
+        labels: 
+          deploymentConfig: ${APPLICATION_NAME}
+#     Specification of the desired behavior of the pod.		  
+      spec:
+#       List of containers belonging to the pod. Containers cannot currently be added or removed. 
+#       There must be at least one container in a Pod.
+        containers:
+          - 
+#           Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL).
+            name: "${APPLICATION_NAME}"
+            image: "${APPLICATION_NAME}"
+#           List of ports to expose from the container. 
+#           Exposing a port here gives the system additional information about the network connections a container uses.
+            ports:
+              -
+                name: "port-http"
+                containerPort: 8080
+                protocol: TCP
+              -
+                name: "port-https" 
+                containerPort: 8443
+                protocol: TCP
+#           List of environment variables to set in the container.
+            env: 
+              - 
+                name: "MYSQL_USER"
+                value: "${DATABASE_USER}"
+              - 
+                name: "MYSQL_PASSWORD"
+                value: "${DATABASE_PASSWORD}"
+              - 
+                name: "MYSQL_DATABASE"
+                value: "${DATABASE_NAME}"
+            resources: {}
+#           Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem.
+            terminationMessagePath: "/dev/termination-log"
+#           Image pull policy. One of Always, Never, IfNotPresent.
+            imagePullPolicy: Always
+#           Security options the pod should run with.
+            securityContext:
+              capabilities: {}
+#             Run container in privileged mode. Processes in privileged containers are essentially equivalent to root on the host.
+              privileged: false
+#       Restart policy for all containers within the pod. One of Always, OnFailure, Never.			
+        restartPolicy: "Always"
+#       Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. 
+#       Value must be non-negative integer. The value zero indicates delete immediately.
+        terminationGracePeriodSeconds: 30
+#       Set DNS policy for containers within the pod. One of 'ClusterFirst' or 'Default'.
+        dnsPolicy: "ClusterFirst"
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# //////////////////////////
+# /// BACKEND DEPLOYMENT ///
+# //////////////////////////
+# DeploymentConfig represents a configuration for a single deployment (represented as a ReplicationController). 
+# It also contains details about changes which resulted in the current state of the DeploymentConfig.
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${APPLICATION_NAME}-db
+    labels:
+      app: ${APPLICATION_NAME}  
+    annotations: 
+      description: "Defines how to deploy the application database"
+# Spec represents a desired deployment state and how to deploy to it.
+  spec:
+#   Strategy describes how a deployment is executed. Rolling / Recreate / Custom
+    strategy: 
+      type: Recreate
+      recreateParams:
+#       TimeoutSeconds is the time to wait for updates before giving up.
+        timeoutSeconds: 600
+#   Triggers determine how updates to a DeploymentConfig result in new deployments. 
+#   If no triggers are defined, a new deployment can only occur as a result of an explicit client update to the DeploymentConfig.		
+    triggers:
+      -
+        type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - ${APPLICATION_NAME}-db
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: mysql:latest
+      -
+        type: ConfigChange
+#   Replicas is the number of desired replicas.
+    replicas: 1
+#   Test ensures that this deployment config will have zero replicas except while a deployment is running. 
+#   This allows the deployment config to be used as a continuous deployment test 
+#   - triggering on images, running the deployment, and then succeeding or failing.
+    test: false
+#   Selector is a label query over pods that should match the Replicas count. Selector label may match the template label.
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}-db
+#   Template is the object that describes the pod that will be created if insufficient replicas are detected.
+    template:
+      metadata:
+        name: ${APPLICATION_NAME}-db
+#       Map of string keys and values that can be used to organize and categorize (scope and select) objects. 
+#       May match selectors of replication controllers
+        labels: 
+          deploymentConfig: ${APPLICATION_NAME}-db
+#     Specification of the desired behavior of the pod.		  
+      spec:
+#       List of volumes that can be mounted by containers belonging to the pod.
+        volumes:
+          -
+#           Volume's name. Must be a DNS_LABEL and unique within the pod.
+            name: ${APPLICATION_NAME}-db-vol
+#           PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace.
+            persistentVolumeClaim:
+              claimName: ${APPLICATION_NAME}-db-pvc
+#       List of containers belonging to the pod. Containers cannot currently be added or removed. 
+#       There must be at least one container in a Pod.
+        containers:
+          - 
+#           Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL).
+            name: "${APPLICATION_NAME}-db"
+            image: "${APPLICATION_NAME}-db"
+#           List of ports to expose from the container. 
+#           Exposing a port here gives the system additional information about the network connections a container uses.
+            ports:
+              -
+                name: "port-db"
+                containerPort: 3306
+                protocol: TCP
+#           List of environment variables to set in the container.
+            env: 
+              - 
+                name: "MYSQL_USER"
+                value: "${DATABASE_USER}"
+              - 
+                name: "MYSQL_PASSWORD"
+                value: "${DATABASE_PASSWORD}"
+              - 
+                name: "MYSQL_DATABASE"
+                value: "${DATABASE_NAME}"
+            resources:
+#             Limits describes the maximum amount of compute resources allowed.
+              limits:
+                memory: 512Mi
+#             Requests describes the minimum amount of compute resources required.				
+              requests: {}
+#           Pod volumes to mount into the container's filesystem.
+            volumeMounts:
+              -
+                name: ${APPLICATION_NAME}-db-vol
+                mountPath: /var/lib/mysql/data
+#           Periodic probe of container liveness. Container will be restarted if the probe fails.
+            livenessProbe:
+#             TCPSocket specifies an action involving a TCP port.
+              tcpSocket:
+                port: 3306
+#              Number of seconds after the container has started before liveness probes are initiated.
+              initialDelaySeconds: 30
+#             Number of seconds after which the probe times out.
+              timeoutSeconds: 1
+#             How often (in seconds) to perform the probe.
+              periodSeconds: 10
+#             Minimum consecutive successes for the probe to be considered successful after having failed.
+              successThreshold: 1
+#              Minimum consecutive failures for the probe to be considered failed after having succeeded.
+              failureThreshold: 3
+#           Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails.
+            readinessProbe:
+#             One and only one of the following should be specified. Exec specifies the action to take.
+              exec:
+#               Command is the command line to execute inside the container, the working directory for the command  is root ('/') 
+#               in the container's filesystem. The command is simply exec'd, it is not run inside a shell, so traditional shell
+#               instructions ('|', etc) won't work. To use a shell, you need to explicitly call out to that shell.
+                command: [/bin/sh, '-i', '-c', 'MYSQL_PWD=''${DATABASE_PASSWORD}'' mysql -h 127.0.0.1 -u ${DATABASE_USER} -D ${DATABASE_NAME} -e ''SELECT 1''']        
+              initialDelaySeconds: 5
+              timeoutSeconds: 1
+              periodSeconds: 10
+              successThreshold: 1
+              failureThreshold: 3
+#           Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem.
+            terminationMessagePath: "/dev/termination-log"
+#           Image pull policy. One of Always, Never, IfNotPresent.
+            imagePullPolicy: IfNotPresent
+#           Security options the pod should run with.
+            securityContext:
+              capabilities: {}
+#             Run container in privileged mode. Processes in privileged containers are essentially equivalent to root on the host.
+              privileged: false
+#       Restart policy for all containers within the pod. One of Always, OnFailure, Never.			
+        restartPolicy: "Always"
+#       Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. 
+#       Value must be non-negative integer. The value zero indicates delete immediately.
+        terminationGracePeriodSeconds: 30
+#       Set DNS policy for containers within the pod. One of 'ClusterFirst' or 'Default'.
+        dnsPolicy: "ClusterFirst"
+# +++++++++++++++++++++++++++++++++
+# ++++++ LAYER 4 ABSTRACTIONS +++++
+# +++++++++++++++++++++++++++++++++
+# This layer defines all of the additional resources needed for our application to run. 
+# //Service
+# --> A service serves as an internal load balancer. It identifies a set of replicated pods in order to proxy the connections it receives to them. 
+# --> Backing pods can be added to or removed from a service arbitrarily while the service remains consistently available, 
+#     enabling anything that depends on the service to refer to it at a consistent internal address.
+# --> Services are assigned an IP address and port pair that, when accessed, proxy to an appropriate backing pod. 
+# --> A service uses a label selector to find all the containers running that provide a certain network service on a certain port.
+#
+# //Route
+# --> An OpenShift route exposes a service at a host name, like www.example.com, so that external clients can reach it by name.
+#
+# //PersistentVolumeClaim
+# --> You can make a request for storage resources using a PersistentVolumeClaim object; the claim is paired with a volume that generally matches your request.
+#
+# //ServiceAccount
+# --> Service accounts provide a flexible way to control API access without sharing a regular user’s credentials.
+#
+# //Secret
+# --> A secret provides a mechanism to hold sensitive information such as passwords, OpenShift client config files, dockercfg files, etc. 
+# --> Secrets decouple sensitive content from the pods that use it and can be mounted into containers using a volume plug-in 
+#     or used by the system to perform actions on behalf of a pod.
+# NOTE: 
+# --> These are not all of the possible abstractions. Read the official documentation for more.
+#
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////////
+# /// FRONTEND SERVICE ///
+# ////////////////////////
+# Service is a named abstraction of software service (for example, mysql) consisting of local port (for example 3306) that the proxy listens on, 
+# and the selector that determines which pods will answer requests sent through the proxy.
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "${APPLICATION_NAME}-svc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Exposes and load balances the application frontend pods."
+# Spec defines the behavior of a service.
+  spec:
+    ports:
+      -
+        name: "port-http"
+        protocol: TCP
+#       The port that will be exposed by this service.
+        port: 8080
+#       Number or name of the port to access on the pods targeted by the service. Number must be in the range 1 to 65535. 
+#       Name must be an IANA_SVC_NAME. If this is a string, it will be looked up as a named port in the target Pod's container ports.
+        targetPort: 8080
+      -
+        name: "port-https"
+        protocol: TCP
+#       The port that will be exposed by this service.
+        port: 8443
+#       Port in the pod to route the network traffic to. Number or name of the port to access on the pods targeted by the service. 
+#       Name must be an IANA_SVC_NAME. If this is a string, it will be looked up as a named port in the target Pod's container ports.
+        targetPort: 8443
+#    This service will route traffic to pods having labels matching this selector. 
+#    Label keys and values that must match in order to receive traffic for this service.
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ///////////////////////
+# /// BACKEND SERVICE ///
+# ///////////////////////
+# Service is a named abstraction of software service (for example, mysql) consisting of local port (for example 3306) that the proxy listens on, 
+# and the selector that determines which pods will answer requests sent through the proxy.
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "${APPLICATION_NAME}-db-svc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Exposes and load balances the application frontend pods."
+# Spec defines the behavior of a service.
+  spec:
+    ports:
+      -
+        name: "port-db"
+        protocol: TCP
+#       The port that will be exposed by this service.
+        port: 3306
+#       Number or name of the port to access on the pods targeted by the service. Number must be in the range 1 to 65535. 
+#       Name must be an IANA_SVC_NAME. If this is a string, it will be looked up as a named port in the target Pod's container ports.
+        targetPort: 3306
+#    This service will route traffic to pods having labels matching this selector. 
+#    Label keys and values that must match in order to receive traffic for this service.
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}-db
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////////
+# /// FRONTEND ROUTE /////
+# ////////////////////////
+# Route encapsulates the inputs needed to connect an alias to endpoints.
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: "${APPLICATION_NAME}"
+    labels:
+      app: "${APPLICATION_NAME}"
+      network: ${PUBLIC_NETWORK}
+    annotations:
+      description: "The route exposes the frontend service at a hostname."
+# Spec is the desired state of the route.
+  spec:
+#   Host is an alias/DNS that points to the service.
+    host: "${APPLICATION_HOSTNAME}"
+#   To is an object the route points to. Only the Service kind is allowed, and it will be defaulted to Service.
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}-svc
+#   If specified, the port to be used by the router. 
+#   Most routers will use all endpoints exposed by the service by default - set this value to instruct routers which port to use.
+    port:
+      targetPort: 8080
+#   TLS provides the ability to configure certificates and termination for the route
+    tls:
+#     Termination indicates termination type. edge / passthrough / reencryption
+      termination: edge
+#     InsecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to an edge-terminated route: disable, allow or redirect
+      insecureEdgeTerminationPolicy: Allow
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# /////////////////////////////////////////
+# /// BACKEND PERSISTENT VOLUME CLAIM /////
+# /////////////////////////////////////////
+# PersistentVolumeClaim is a user's request for and claim to a persistent volume.
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: "${APPLICATION_NAME}-db-pvc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "The pvc used for the application DB."
+# Spec defines the desired characteristics of a volume requested by a pod.
+  spec:
+#   AccessModes contains the desired access modes the volume should have. ReadWriteOnce / ReadWriteMany / ReadOnlyMany
+    accessModes:
+      - "ReadWriteMany"
+#   Resources represents the minimum resources the volume should have.
+    resources:
+#     Requests describes the minimum amount of compute resources required.
+      requests:
+        storage: "${DATABASE_VOLUME_CAPACITY}"
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////
+# /// PARAMETERS /////
+# ////////////////////
+# PersistentVolumeClaim is a user's request for and claim to a persistent volume.
+parameters: 
+  - name: "APPLICATION_NAME"
+    displayName: "Application name"
+    description: "The name assigned to all of the objects defined in this template."
+    required: true
+    value: "workshop"
+  - name: "APPLICATION_HOSTNAME"
+    displayName: "Application hostname"
+    description: "The hostname for exposing your application on the Internal Network (*.kermit.itn.intraorange) or on the Internet (*.kmt.orange.com)."
+  - name: "PUBLIC_NETWORK"
+    displayName: "If your application will be exposed on the Internet (HOSTNAME = *.kmt.orange.com) you need to setup this flag with the value: public"
+    description: "The name assigned to all of the objects defined in this template."
+  - name: "SOURCE_REPOSITORY_URL"
+    displayName: "Git Repository URL"
+    description: "The URL of the repository with your application source code."
+    required: true
+    value: "https://github.com/orangekmt/OpenshiftTemplates.git"
+  - name: "SOURCE_REPOSITORY_REF"
+    displayName: "Git Repository Reference"
+    description: "The branch/tag/ref inside the repository where your application source code resides."
+    value: "master"
+  - name: "SOURCE_REPOSITORY_CONTEXT"
+    displayName: "Git Repository Context Directory"
+    description: "The location inside the repository where your application source code resides."
+    value: "Workshop.Example.Persistent"
+  - name: "WEBHOOK_SECRET"
+    displayName: "Git Webhook Secret"
+    description: "A secret string used to configure the Git webhook."
+    generate: "expression"
+    from: "[a-zA-Z0-9]{40}"
+  - name: "DATABASE_NAME"
+    displayName: "Database Name"
+    value: "mysqldb"
+  - name: "DATABASE_USER"
+    displayName: "Database User"
+    value: "mysql"
+  - name: "DATABASE_PASSWORD"
+    displayName: "Database Password"
+    generate: "expression"
+    from: "[a-zA-Z0-9]{16}"
+  - name: "DATABASE_VOLUME_CAPACITY"
+    displayName: "Volume Capacity"
+    description: "Volume space available for data, e.g. 1Gi, 3Gi."
+    value: "3Gi"
+    required: true
