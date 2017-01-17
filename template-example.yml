@@ -8,7 +8,7 @@ apiVersion: v1
 kind: Template
 metadata:
 # The name of the template
-  name: workshop-persistent
+  name: template-example
   annotations:
 #   Optional description for the template
     description: "An example ToDo List Application with a MySQL Database."
@@ -20,7 +20,7 @@ metadata:
 # A list of labels to apply to all objects on create
 # Defining a label in this way makes it easy for users to find and manage all the objects created from a particular template.
 labels:
-  template: workshop-persistent
+  template: template-example
 # +++++++++++++++++++++++++++
 # +++ DESIGN OUR TEMPLATE +++
 # +++++++++++++++++++++++++++
