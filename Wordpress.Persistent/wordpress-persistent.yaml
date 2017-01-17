@@ -120,36 +120,36 @@ objects:
           persistentVolumeClaim:
             claimName: ${APPLICATION_NAME}-pvc
         containers:
-        - 
-          name: ${APPLICATION_NAME}
-          image: ${APPLICATION_NAME}:latest
-          ports:
-            - 
-              name: "port-http"
-              containerPort: 8080
-              protocol: TCP
-          env:
-            - 
-              name: MYSQL_USER
-              value: ${MYSQL_USER}
-            - 
-              name: MYSQL_PASSWORD
-              value: ${MYSQL_PASSWORD}
-            - 
-              name: MYSQL_DATABASE
-              value: ${MYSQL_DATABASE}
-            - 
-              name: WORDPRESS_DB_USER
-              value: ${MYSQL_USER}
-            - 
-              name: WORDPRESS_DB_PASSWORD
-              value: ${MYSQL_PASSWORD}
-            - 
-              name: WORDPRESS_DB_NAME
-              value: ${MYSQL_DATABASE}
-            - 
-              name: WORDPRESS_DB_HOST
-              value: ${APPLICATION_NAME}-db-svc
+          - 
+            name: ${APPLICATION_NAME}
+            image: ${APPLICATION_NAME}:latest
+            ports:
+              - 
+                name: "port-http"
+                containerPort: 8080
+                protocol: TCP
+            env:
+              -
+                name: MYSQL_USER
+                value: ${MYSQL_USER}
+              -
+                name: MYSQL_PASSWORD
+                value: ${MYSQL_PASSWORD}
+              -
+                name: MYSQL_DATABASE
+                value: ${MYSQL_DATABASE}
+              -
+                name: WORDPRESS_DB_USER
+                value: ${MYSQL_USER}
+              -
+                name: WORDPRESS_DB_PASSWORD
+                value: ${MYSQL_PASSWORD}
+              -
+                name: WORDPRESS_DB_NAME
+                value: ${MYSQL_DATABASE}
+              -
+                name: WORDPRESS_DB_HOST
+                value: ${APPLICATION_NAME}-db-svc
             resources: {}
             volumeMounts:
               - 
@@ -180,7 +180,7 @@ objects:
     strategy: 
       type: Recreate
       recreateParams:
-        timeoutSeconds: 600	
+        timeoutSeconds: 600
     triggers:
       -
         type: ImageChange
@@ -265,7 +265,7 @@ objects:
             imagePullPolicy: IfNotPresent
             securityContext:
               capabilities: {}
-              privileged: false		
+              privileged: false
         restartPolicy: "Always"
         terminationGracePeriodSeconds: 30
         dnsPolicy: "ClusterFirst"
