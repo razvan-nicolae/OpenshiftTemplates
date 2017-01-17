@@ -1,317 +1,393 @@
 ---
-##################
-# BEGIN TEMPLATE #
-##################
-  kind: "Template"
-  apiVersion: "v1"
-  metadata: 
-    name: "workshop-persistent"
-    annotations: 
-      description: "An example ToDo List Application with a MySQL Database"
-      tags: "quickstart,instant-app,jboss,mysql,workshop,kermit"
-      iconClass: "icon-jboss"
-  labels: 
-    template: "workshop-persistent"
-  objects:
-###################
-# Layer 2: Images #
-###################	  	  
-    - kind: "ImageStream"
-      apiVersion: "v1"
-      metadata: 
-        name: "${APPLICATION_NAME}"
-        annotations: 
-          description: "Keeps track of changes in the application image"
-        labels:
-          name: "${APPLICATION_NAME}"
-        spec:
-          dockerImageRepository: {}
-        tags:
-          name: latest
-########################
-# Layer 3: Deployments #
-########################
-########################
-####### FrontEnd #######
-########################
-    - kind: "DeploymentConfig"
-      apiVersion: "v1"
-      metadata: 
-        name: "${APPLICATION_NAME}"
-        annotations: 
-          description: "Defines how to deploy the application server"
-        labels:
-          name: "${APPLICATION_NAME}"
-      spec:
-        replicas: 1
-        selector:
-          deploymentConfig: "${APPLICATION_NAME}"
-        strategy: 
-          type: "Rolling"
-        template:
-          metadata:
-            name: "${APPLICATION_NAME}"
-            labels: 
-              deploymentConfig: "${APPLICATION_NAME}"
-          spec:
-            containers:
-            - name: "${APPLICATION_NAME}"
-              image: "${APPLICATION_NAME}"
-              ports:
-              - containerPort: 8080
-                protocol: TCP
-              - containerPort: 8443
-                protocol: TCP
-              env: 
-                - name: "MYSQL_USER"
-                  value: "${DATABASE_USER}"
-                - name: "MYSQL_PASSWORD"
-                  value: "${DATABASE_PASSWORD}"
-                - name: "MYSQL_DATABASE"
-                  value: "${DATABASE_NAME}"
-              resources: {}
-              terminationMessagePath: "/dev/termination-log"
-              securityContext:
-                capabilities: {}
-                privileged: false
-              restartPolicy: "Always"
-              dnsPolicy: "ClusterFirst"
-        triggers: 
-          - type: "ImageChange"
-            imageChangeParams: 
-              automatic: true
-              containerNames: 
-                - "${APPLICATION_NAME}"
-              from: 
-                kind: "ImageStreamTag"
-                name: "${APPLICATION_NAME}:latest"
-          - type: "ConfigChange"
-########################
-####### BackEnd ########
-########################           
-    - kind: "DeploymentConfig"
-      apiVersion: "v1"
-      metadata: 
-        name: "${DATABASE_SERVICE_NAME}"
-        annotations: 
-          description: "Defines how to deploy the database"
-        labels:
-          name: "${APPLICATION_NAME}"
-      spec:
-        replicas: 1
-        selector: 
-          deploymentConfig: "${DATABASE_SERVICE_NAME}"
-        strategy: 
-          type: "Recreate"
-        template: 
-          metadata: 
-            name: "${DATABASE_SERVICE_NAME}"
-            labels: 
-              deploymentConfig: "${DATABASE_SERVICE_NAME}"
-          spec: 
-            containers: 
-              - name: "mysql"
-                image: " "
-                ports: 
-                  - containerPort: 3306
-                readinessProbe: 
-                  timeoutSeconds: 1
-                  initialDelaySeconds: 5
-                  exec: 
-                    command: 
-                      - "/bin/sh"
-                      - "-i"
-                      - "-c"
-                      - "MYSQL_PWD='${DATABASE_PASSWORD}' mysql -h 127.0.0.1 -u ${DATABASE_USER} -D ${DATABASE_NAME} -e 'SELECT 1'"
-                livenessProbe: 
-                  timeoutSeconds: 1
-                  initialDelaySeconds: 30
-                  tcpSocket: 
-                    port: 3306
-                env: 
-                  - name: "MYSQL_USER"
-                    value: "${DATABASE_USER}"
-                  - name: "MYSQL_PASSWORD"
-                    value: "${DATABASE_PASSWORD}"
-                  - name: "MYSQL_DATABASE"
-                    value: "${DATABASE_NAME}"
-                volumeMounts: 
-                  - name: "${DATABASE_SERVICE_NAME}-vol"
-                    mountPath: "/var/lib/mysql/data"
-            volumes: 
-              - name: "${DATABASE_SERVICE_NAME}-vol"
-                persistentVolumeClaim:
-                  claimName: "${DATABASE_SERVICE_NAME}-pvc"
-        triggers: 
-          - type: "ImageChange"
-            imageChangeParams: 
-              automatic: true
-              containerNames: 
-                - "mysql"
-              from: 
-                kind: "ImageStreamTag"
-                namespace: "openshift"
-                name: "mysql:5.6"
-          - type: "ConfigChange"
-#########################
-# Layer 4: Abstractions #
-#########################
-########################
-### Service FrontEnd ###
-######################## 
-    - kind: "Service"
-      apiVersion: "v1"
-      metadata: 
-        name: "${APPLICATION_NAME}-svc"
-        annotations: 
-          description: "Exposes and load balances the application pods"
-        labels:
-          name: "${APPLICATION_NAME}"
-      spec: 
-        ports:
-          - name: "app-port"
-            port: 8080
-            protocol: TCP
-            targetPort: 8080
-          - name: "app-port-secure"
-            port: 8443
-            protocol: TCP
-            targetPort: 8443
-        selector: 
-          deploymentconfig: "${APPLICATION_NAME}"
-########################
-### Service BackEnd ####
-######################## 
-    - kind: "Service"
-      apiVersion: "v1"
-      metadata: 
-        name: "${DATABASE_SERVICE_NAME}-svc"
-        annotations: 
-          description: "Exposes and load balances the application pods"
-        labels:
-          name: "${APPLICATION_NAME}"
-      spec: 
-        ports:
-          - name: "db-port"
-            port: 3306
-            protocol: TCP
-            targetPort: 3306
-        selector: 
-          deploymentconfig: "${DATABASE_SERVICE_NAME}"
-########################
-######## Route #########
-########################    
-    - kind: "Route"
-      apiVersion: "v1"
-      metadata: 
-        name: "${APPLICATION_NAME}"
-        annotations: 
-          description: "Route for application's service"
-        labels:
-          name: "${APPLICATION_NAME}"
-      spec: 
-        host: ""
-        port:
-          targetPort: 8080
-        to: 
-          kind: "Service"
-          name: "${APPLICATION_NAME}-svc"
-########################
-######### PVC #########
-########################           
-    - kind: "PersistentVolumeClaim"
-      apiVersion: "v1"
-      metadata:
-        name: "${DATABASE_SERVICE_NAME}-pvc"
-        annotations: 
-          description: "creates an persistent volume claim"
-        labels:
-          name: "${DATABASE_SERVICE_NAME}"
-      spec: 
-        accessModes: 
-          - "ReadWriteMany" 
-        resources:
-          requests:
-            storage: "${VOLUME_CAPACITY}"
-###################
-# Layer 1: Builds #
-###################
-    - kind: "BuildConfig"
-      apiVersion: "v1"
-      metadata: 
-        name: "${APPLICATION_NAME}"
+apiVersion: v1
+kind: Template
+metadata:
+  name: workshop-persistent
+  annotations:
+    description: "An example ToDo List Application with a MySQL Database."
+    iconClass: "icon-jboss"
+    tags: "quickstart,instant-app,jboss,mysql,workshop,kermit"
+labels:
+  template: workshop-persistent
+objects:
+# +++++++++++++++++++++++++++
+# +++ LAYER 0 BASE IMAGES +++
+# +++++++++++++++++++++++++++
+#
+# +++++++++++++++++++++++++++
+# ++++++ LAYER 1 BUILDS +++++
+# +++++++++++++++++++++++++++
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+      name: ${APPLICATION_NAME}
+      labels:
+        app: ${APPLICATION_NAME}
         annotations: 
           description: "Defines how to build the application"
-      labels:
-        name: "${APPLICATION_NAME}"
-      spec: 
-        source: 
-          type: "Git"
-          git: 
-            uri: "${SOURCE_REPOSITORY_URL}"
-            ref: "master"
-          contextDir: "${SOURCE_REPOSITORY_CONTEXT}"
-        strategy: 
-          type: "Source"
-          sourceStrategy:
-            from: 
-              kind: "ImageStreamTag"
-              namespace: "openshift"
-              name: "jboss-webserver30-tomcat7-openshift:latest"
-        output: 
-          to: 
-            kind: "ImageStreamTag"
-            name: "${APPLICATION_NAME}:latest"
-        triggers: 
-          - type: "ImageChange"
-            imageChange: {}
-          - type: "ConfigChange"
-            configChange: {}
-          - type: "GitHub"
-            github: 
-              secret: "${WEBHOOK_SECRET}"
-          - type: "Generic"
-            generic: 
-              secret: "${WEBHOOK_SECRET}"
-##############
-# Parameters #
-##############
-  parameters: 
-    - name: "APPLICATION_NAME"
-      displayName: "APPLICATION_NAME"
-      description: "The name assigned to all of the objects defined in this template."
-      required: true
-      value: "workshop"
-    - name: "SOURCE_REPOSITORY_URL"
-      displayName: "Git Repository URL"
-      description: "The URL of the repository with your application source code."
-      value: "https://github.com/orangekmt/OpenshiftTemplates.git"
-    - name: "SOURCE_REPOSITORY_CONTEXT"
-      displayName: "Git Repository Context Directory"
-      description: "The location inside the repository where your application source code resides."
-      value: "Workshop.Example.Persistent"
-    - name: "WEBHOOK_SECRET"
-      displayName: "Git Webhook Secret"
-      description: "A secret string used to configure the Git webhook."
-      generate: "expression"
-      from: "[a-zA-Z0-9]{40}"
-    - name: "DATABASE_SERVICE_NAME"
-      displayName: "Database Service Name"
-      description: "The name assigned to all of the DB objects defined in this template."
-      required: true
-      value: "workshop-db"
-    - name: "DATABASE_NAME"
-      displayName: "Database Name"
-      value: "mysqldb"
-    - name: "DATABASE_USER"
-      displayName: "Database User"
-      value: "mysql"
-    - name: "DATABASE_PASSWORD"
-      displayName: "Database Password"
-      generate: "expression"
-      from: "[a-zA-Z0-9]{16}"
-    - name: "VOLUME_CAPACITY"
-      displayName: "Volume Capacity"
-      description: "Volume space available for data, e.g. 1Gi, 3Gi."
-      value: "3Gi"
-      required: true
+  spec:
+    triggers: 
+      - 
+        type: ImageChange
+        imageChange: {}
+      - 
+        type: ConfigChange
+      - 
+        type: GitHub
+        github: 
+          secret: "${WEBHOOK_SECRET}"
+      - 
+        type: Generic
+        generic: 
+          secret: "${WEBHOOK_SECRET}"
+    runPolicy: Serial
+    source:
+      type: Git
+      git: 
+        uri: ${SOURCE_REPOSITORY_URL}.
+        ref: ${SOURCE_REPOSITORY_REF}
+      contextDir: ${SOURCE_REPOSITORY_CONTEXT}  
+    strategy:
+      type: Source
+      sourceStrategy:
+        from: 
+          kind: ImageStreamTag
+          namespace: openshift
+          name: "jboss-webserver30-tomcat7-openshift:latest"
+        env: {}
+    output:
+      to: 
+        kind: ImageStreamTag
+        name: "${APPLICATION_NAME}:latest"
+# +++++++++++++++++++++++++++
+# ++++++ LAYER 2 IMAGES +++++
+# +++++++++++++++++++++++++++
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: "${APPLICATION_NAME}"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Resulting Docker Image after the buit of my application frontend."
+  spec:
+    tags:
+      -
+        tag: latest
+# +++++++++++++++++++++++++++
+# +++ LAYER 3 DEPLOYMENTS +++
+# +++++++++++++++++++++++++++
+# ///////////////////////////
+# /// FRONTEND DEPLOYMENT ///
+# ///////////////////////////
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${APPLICATION_NAME}
+    labels:
+      app: ${APPLICATION_NAME} 
+    annotations: 
+      description: "Defines how to deploy the application server"
+  spec:
+    strategy: 
+      type: Rolling
+      rollingParams:
+        updatePeriodSeconds: 1
+        intervalSeconds: 1
+        timeoutSeconds: 600
+        maxUnavailable: 25%
+        maxSurge: 25%		
+    triggers:
+      -
+        type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - ${APPLICATION_NAME}
+          from:
+            kind: ImageStreamTag
+            name: ${APPLICATION_NAME}:latest
+      -
+        type: ConfigChange
+    replicas: 1
+    test: false
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}
+    template:
+      metadata:
+        name: ${APPLICATION_NAME}
+        labels: 
+          deploymentConfig: ${APPLICATION_NAME}  
+      spec:
+        containers:
+          - 
+            name: "${APPLICATION_NAME}"
+            image: "${APPLICATION_NAME}"
+            ports:
+              -
+                name: "port-http"
+                containerPort: 8080
+                protocol: TCP
+              -
+                name: "port-https" 
+                containerPort: 8443
+                protocol: TCP
+            env: 
+              - 
+                name: "MYSQL_USER"
+                value: "${DATABASE_USER}"
+              - 
+                name: "MYSQL_PASSWORD"
+                value: "${DATABASE_PASSWORD}"
+              - 
+                name: "MYSQL_DATABASE"
+                value: "${DATABASE_NAME}"
+            resources: {}
+            terminationMessagePath: "/dev/termination-log"
+            imagePullPolicy: Always
+            securityContext:
+              capabilities: {}
+              privileged: false	
+        restartPolicy: "Always"
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: "ClusterFirst"
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# //////////////////////////
+# /// BACKEND DEPLOYMENT ///
+# //////////////////////////
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    name: ${APPLICATION_NAME}-db
+    labels:
+      app: ${APPLICATION_NAME}  
+    annotations: 
+      description: "Defines how to deploy the application database"
+  spec:
+    strategy: 
+      type: Recreate
+      recreateParams:
+        timeoutSeconds: 600	
+    triggers:
+      -
+        type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - ${APPLICATION_NAME}-db
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: mysql:latest
+      -
+        type: ConfigChange
+    replicas: 1
+    test: false
+    selector:
+      deploymentConfig: ${APPLICATION_NAME}-db
+    template:
+      metadata:
+        name: ${APPLICATION_NAME}-db
+        labels: 
+          deploymentConfig: ${APPLICATION_NAME}-db  
+      spec:
+        volumes:
+          -
+            name: ${APPLICATION_NAME}-db-vol
+            persistentVolumeClaim:
+              claimName: ${APPLICATION_NAME}-db-pvc
+        containers:
+          - 
+            name: "${APPLICATION_NAME}-db"
+            image: "${APPLICATION_NAME}-db"
+            ports:
+              -
+                name: "port-db"
+                containerPort: 3306
+                protocol: TCP
+            env: 
+              - 
+                name: "MYSQL_USER"
+                value: "${DATABASE_USER}"
+              - 
+                name: "MYSQL_PASSWORD"
+                value: "${DATABASE_PASSWORD}"
+              - 
+                name: "MYSQL_DATABASE"
+                value: "${DATABASE_NAME}"
+            resources:
+              limits:
+                memory: 512Mi				
+              requests: {}
+            volumeMounts:
+              -
+                name: ${APPLICATION_NAME}-db-vol
+                mountPath: /var/lib/mysql/data
+            livenessProbe:
+              tcpSocket:
+                port: 3306
+              initialDelaySeconds: 30
+              timeoutSeconds: 1
+              periodSeconds: 10
+              successThreshold: 1
+              failureThreshold: 3
+            readinessProbe:
+              exec:
+                command: [/bin/sh, '-i', '-c', 'MYSQL_PWD=''${DATABASE_PASSWORD}'' mysql -h 127.0.0.1 -u ${DATABASE_USER} -D ${DATABASE_NAME} -e ''SELECT 1''']        
+              initialDelaySeconds: 5
+              timeoutSeconds: 1
+              periodSeconds: 10
+              successThreshold: 1
+              failureThreshold: 3
+            terminationMessagePath: "/dev/termination-log"
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              capabilities: {}
+              privileged: false		
+        restartPolicy: "Always"
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: "ClusterFirst"
+# +++++++++++++++++++++++++++++++++
+# ++++++ LAYER 4 ABSTRACTIONS +++++
+# +++++++++++++++++++++++++++++++++
+# ////////////////////////
+# /// FRONTEND SERVICE ///
+# ////////////////////////
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "${APPLICATION_NAME}-svc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Exposes and load balances the application frontend pods."
+  spec:
+    ports:
+      -
+        name: "port-http"
+        protocol: TCP
+        port: 8080
+        targetPort: 8080
+      -
+        name: "port-https"
+        protocol: TCP
+        port: 8443
+        targetPort: 8443
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ///////////////////////
+# /// BACKEND SERVICE ///
+# ///////////////////////
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: "${APPLICATION_NAME}-db-svc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "Exposes and load balances the application frontend pods."
+  spec:
+    ports:
+      -
+        name: "port-db"
+        protocol: TCP
+        port: 3306
+        targetPort: 3306
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}-db
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////////
+# /// FRONTEND ROUTE /////
+# ////////////////////////
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: "${APPLICATION_NAME}"
+    labels:
+      app: "${APPLICATION_NAME}"
+      network: ${PUBLIC_NETWORK}
+    annotations:
+      description: "The route exposes the frontend service at a hostname."
+  spec:
+    host: "${APPLICATION_HOSTNAME}"
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}-svc
+    port:
+      targetPort: 8080
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Allow
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# /////////////////////////////////////////
+# /// BACKEND PERSISTENT VOLUME CLAIM /////
+# /////////////////////////////////////////
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: "${APPLICATION_NAME}-db-pvc"
+    labels:
+      app: "${APPLICATION_NAME}"
+    annotations:
+      description: "The pvc used for the application DB."
+  spec:
+    accessModes:
+      - "ReadWriteMany"
+    resources:
+      requests:
+        storage: "${DATABASE_VOLUME_CAPACITY}"
+# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
+# ////////////////////
+# /// PARAMETERS /////
+# ////////////////////
+parameters: 
+  - name: "APPLICATION_NAME"
+    displayName: "Application name"
+    description: "The name assigned to all of the objects defined in this template."
+    required: true
+    value: "workshop"
+  - name: "APPLICATION_HOSTNAME"
+    displayName: "Application hostname"
+    description: "The hostname for exposing your application on the Internal Network (*.kermit.itn.intraorange) or on the Internet (*.kmt.orange.com)."
+  - name: "PUBLIC_NETWORK"
+    displayName: "If your application will be exposed on the Internet (HOSTNAME = *.kmt.orange.com) you need to setup this flag with the value: public"
+    description: "The name assigned to all of the objects defined in this template."
+  - name: "SOURCE_REPOSITORY_URL"
+    displayName: "Git Repository URL"
+    description: "The URL of the repository with your application source code."
+    required: true
+    value: "https://github.com/orangekmt/OpenshiftTemplates.git"
+  - name: "SOURCE_REPOSITORY_REF"
+    displayName: "Git Repository Reference"
+    description: "The branch/tag/ref inside the repository where your application source code resides."
+    value: "master"
+  - name: "SOURCE_REPOSITORY_CONTEXT"
+    displayName: "Git Repository Context Directory"
+    description: "The location inside the repository where your application source code resides."
+    value: "Workshop.Example.Persistent"
+  - name: "WEBHOOK_SECRET"
+    displayName: "Git Webhook Secret"
+    description: "A secret string used to configure the Git webhook."
+    generate: "expression"
+    from: "[a-zA-Z0-9]{40}"
+  - name: "DATABASE_NAME"
+    displayName: "Database Name"
+    value: "mysqldb"
+  - name: "DATABASE_USER"
+    displayName: "Database User"
+    value: "mysql"
+  - name: "DATABASE_PASSWORD"
+    displayName: "Database Password"
+    generate: "expression"
+    from: "[a-zA-Z0-9]{16}"
+  - name: "DATABASE_VOLUME_CAPACITY"
+    displayName: "Volume Capacity"
+    description: "Volume space available for data, e.g. 1Gi, 3Gi."
+    value: "3Gi"
+    required: true
