@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: "Template"
 metadata:
-  name: wordpress-persistent
+  name: wordpress-ephemeral
   annotations:
-    description: "An example WordPress application with a MySQL database and persistent storage."
+    description: "An example WordPress application with a MySQL database and persistent storage only for DB."
     tags: "quickstart,php,mysql,instant-app,kermit"
     iconClass: icon-wordpress
 labels:
-  template: wordpress-persistent
+  template: wordpress-ephemeral
 objects:
 # +++++++++++++++++++++++++++
 # +++ LAYER 0 BASE IMAGES +++
@@ -114,11 +114,6 @@ objects:
         labels: 
           deploymentConfig: ${APPLICATION_NAME}  
       spec:
-        volumes:
-        - 
-          name: "${APPLICATION_NAME}-vol"
-          persistentVolumeClaim:
-            claimName: ${APPLICATION_NAME}-pvc
         containers:
           - 
             name: ${APPLICATION_NAME}
@@ -151,10 +146,6 @@ objects:
                 name: WORDPRESS_DB_HOST
                 value: ${APPLICATION_NAME}-db-svc
             resources: {}
-            volumeMounts:
-              - 
-                name: "${APPLICATION_NAME}-vol"
-                mountPath: "/var/www/html"
             terminationMessagePath: /dev/termination-log
             imagePullPolicy: Always
             securityContext:
@@ -340,25 +331,6 @@ objects:
       insecureEdgeTerminationPolicy: Allow
 # ----------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------
-# //////////////////////////////////////////
-# /// FRONTEND PERSISTENT VOLUME CLAIM /////
-# //////////////////////////////////////////
-- apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
-    name: "${APPLICATION_NAME}-pvc"
-    labels:
-      app: "${APPLICATION_NAME}"
-    annotations:
-      description: "The pvc used for the application data."
-  spec:
-    accessModes:
-      - "ReadWriteMany"
-    resources:
-      requests:
-        storage: "${APPLICATION_VOLUME_CAPACITY}"
-# ----------------------------------------------------------------------------------------------
-# ----------------------------------------------------------------------------------------------
 # /////////////////////////////////////////
 # /// BACKEND PERSISTENT VOLUME CLAIM /////
 # /////////////////////////////////////////
@@ -409,11 +381,6 @@ parameters:
     description: "A secret string used to configure the Git webhook."
     generate: "expression"
     from: "[a-zA-Z0-9]{40}"
-  - name: "APPLICATION_VOLUME_CAPACITY"
-    displayName: "Application Volume Capacity"
-    description: "Volume space available for data, e.g. 1Gi, 3Gi."
-    value: "3Gi"
-    required: true
   - name: "MYSQL_DATABASE"
     displayName: "Database Name"
     value: "mysqldb"
